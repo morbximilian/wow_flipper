@@ -1,1 +1,67 @@
+name: WoW Forever AH Sync & Deploy
 
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wow-forever-ah-sync
+  cancel-in-progress: false
+
+jobs:
+  sync-and-publish:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Europe/Berlin
+
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Bisherige SQLite-Historie vom gh-pages Branch laden
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages --depth=1
+            git show origin/gh-pages:wow_forever.db.gz > wow_forever.db.gz 2>/dev/null || true
+            if [ -s wow_forever.db.gz ]; then
+              gunzip -f wow_forever.db.gz
+              echo "Bestehende Datenbank geladen."
+            fi
+          else
+            echo "Kein gh-pages Branch vorhanden. Starte mit neuer Datenbank."
+          fi
+
+      - name: AH-Daten ziehen & Flip-Prognosen berechnen
+        env:
+          BNET_CLIENT_ID: ${{ secrets.BNET_CLIENT_ID }}
+          BNET_CLIENT_SECRET: ${{ secrets.BNET_CLIENT_SECRET }}
+        run: python3 flipper.py
+
+      - name: Dashboard & komprimierte Historie auf gh-pages deployen
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist
+          cp index.html dist/index.html
+          cp flips_export.json dist/flips_export.json
+          gzip -9 -c wow_forever.db > dist/wow_forever.db.gz
+          touch dist/.nojekyll
+
+          cd dist
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b gh-pages
+          git add .
+          git commit -m "AH Sync $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin gh-pages
