@@ -2,6 +2,7 @@
 """
 WoW: Forever Cloud Auto-Flipper (EU / Normal PvE / Allianz -> Ruleset 2, House 111)
 Keine externen Pakete noetig (Python 3.10+ Standardbibliothek).
+Abwaertskompatibel mit bestehenden wow_forever.db Datenbanken.
 """
 
 import base64
@@ -28,6 +29,12 @@ EXPORT_JSON_PATH = "flips_export.json"
 WEEKDAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
 
 
+def ensure_column(conn: sqlite3.Connection, table: str, column: str, col_def: str) -> None:
+    cols = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_def}")
+
+
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(
         """
@@ -48,6 +55,9 @@ def init_db(conn: sqlite3.Connection) -> None:
             total_qty INTEGER NOT NULL,
             listing_count INTEGER NOT NULL,
             est_sold_since_prev INTEGER DEFAULT 0,
+            p25_unit INTEGER DEFAULT 0,
+            bottom_qty INTEGER DEFAULT 0,
+            has_random_suffix INTEGER DEFAULT 0,
             PRIMARY KEY (snapshot_id, item_id)
         );
 
@@ -63,13 +73,22 @@ def init_db(conn: sqlite3.Connection) -> None:
             item_id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             sell_price INTEGER DEFAULT 0,
-            quality TEXT DEFAULT 'COMMON'
+            quality TEXT DEFAULT 'COMMON',
+            item_class TEXT DEFAULT '',
+            icon_url TEXT DEFAULT ''
         );
 
         CREATE INDEX IF NOT EXISTS idx_item_stats_item ON item_stats(item_id);
         CREATE INDEX IF NOT EXISTS idx_snapshots_ts ON snapshots(ts_utc);
         """
     )
+
+    # Sichere Migration fuer bestehende Datenbanken
+    ensure_column(conn, "item_stats", "p25_unit", "INTEGER DEFAULT 0")
+    ensure_column(conn, "item_stats", "bottom_qty", "INTEGER DEFAULT 0")
+    ensure_column(conn, "item_stats", "has_random_suffix", "INTEGER DEFAULT 0")
+    ensure_column(conn, "item_meta", "item_class", "TEXT DEFAULT ''")
+    ensure_column(conn, "item_meta", "icon_url", "TEXT DEFAULT ''")
     conn.commit()
 
 
@@ -109,6 +128,14 @@ def ensure_namespace(url: str, namespace: str) -> str:
     return f"{url}{sep}namespace={namespace}"
 
 
+def extract_localized(val, fallback: str = "") -> str:
+    if isinstance(val, dict):
+        return val.get("de_DE") or val.get("en_US") or fallback
+    if isinstance(val, str) and val.strip():
+        return val.strip()
+    return fallback
+
+
 def fetch_auctions(token: str) -> list:
     headers = {"Authorization": f"Bearer {token}"}
     base = f"https://{REGION}.api.blizzard.com"
@@ -136,46 +163,92 @@ def fetch_auctions(token: str) -> list:
     return auctions
 
 
+def fetch_item_icon(base: str, headers: dict, iid: int, media_href: str, hit_ns: str) -> str:
+    urls = []
+    if media_href:
+        urls.append(ensure_namespace(media_href, hit_ns))
+    for ns in (hit_ns, NAMESPACE_STATIC, f"static-classic1x-{REGION}", f"static-classic-{REGION}", f"static-{REGION}"):
+        u = f"{base}/data/wow/media/item/{iid}?namespace={ns}"
+        if u not in urls:
+            urls.append(u)
+
+    for url in urls:
+        try:
+            mdata = http_get_json(url, headers)
+            for asset in mdata.get("assets", []):
+                if asset.get("key") == "icon" and asset.get("value"):
+                    return str(asset["value"])
+        except Exception:
+            continue
+    return "NONE"
+
+
 def fetch_missing_item_meta(conn: sqlite3.Connection, token: str, item_ids: list) -> None:
     if not item_ids:
         return
     cur = conn.cursor()
     placeholders = ",".join("?" * len(item_ids))
-    existing = {
+    # Bereits vollstaendig vorhandene Items (inkl. Icon & Kategorie) ueberspringen
+    complete = {
         row[0]
         for row in cur.execute(
-            f"SELECT item_id FROM item_meta WHERE item_id IN ({placeholders})", item_ids
+            f"""
+            SELECT item_id FROM item_meta
+            WHERE item_id IN ({placeholders})
+              AND COALESCE(icon_url, '') != ''
+              AND COALESCE(item_class, '') != ''
+            """,
+            item_ids,
         )
     }
-    missing = [iid for iid in item_ids if iid not in existing]
+    missing = [iid for iid in item_ids if iid not in complete]
     if not missing:
         return
 
     headers = {"Authorization": f"Bearer {token}"}
     base = f"https://{REGION}.api.blizzard.com"
-    namespaces = (NAMESPACE_STATIC, f"static-classic1x-{REGION}", f"static-{REGION}")
+    namespaces = (NAMESPACE_STATIC, f"static-classic1x-{REGION}", f"static-classic-{REGION}", f"static-{REGION}")
 
-    for iid in missing[:60]:
-        name = f"Item #{iid}"
-        sell_price = 0
-        quality = "COMMON"
+    # Bis zu 65 Lookups pro Lauf (fuellt Top 120 spaetestens in 2 Laeufen komplett auf)
+    for iid in missing[:65]:
+        existing = cur.execute(
+            "SELECT name, sell_price, quality, item_class, icon_url FROM item_meta WHERE item_id = ?",
+            (iid,),
+        ).fetchone()
+
+        name = existing[0] if existing else f"Item #{iid}"
+        sell_price = existing[1] if existing else 0
+        quality = existing[2] if existing else "COMMON"
+        item_class = (existing[3] or "") if existing else ""
+        icon_url = (existing[4] or "") if existing else ""
+        media_href = ""
+        hit_ns = NAMESPACE_STATIC
+
         for ns in namespaces:
             try:
                 url = f"{base}/data/wow/item/{iid}?namespace={ns}&locale=de_DE"
                 data = http_get_json(url, headers)
-                raw_name = data.get("name")
-                if isinstance(raw_name, dict):
-                    name = raw_name.get("de_DE") or raw_name.get("en_US") or name
-                elif isinstance(raw_name, str) and raw_name:
-                    name = raw_name
-                sell_price = int(data.get("sell_price", 0))
-                quality = data.get("quality", {}).get("type", "COMMON")
+                name = extract_localized(data.get("name"), name)
+                sell_price = int(data.get("sell_price", sell_price))
+                quality = data.get("quality", {}).get("type", quality) or quality
+                item_class = extract_localized(data.get("item_class", {}).get("name"), item_class)
+                media_href = data.get("media", {}).get("key", {}).get("href", "")
+                hit_ns = ns
                 break
             except Exception:
                 continue
+
+        if not icon_url:
+            icon_url = fetch_item_icon(base, headers, iid, media_href, hit_ns)
+        if not item_class:
+            item_class = "Sonstiges"
+
         cur.execute(
-            "INSERT OR REPLACE INTO item_meta(item_id, name, sell_price, quality) VALUES (?, ?, ?, ?)",
-            (iid, name, sell_price, quality),
+            """
+            INSERT OR REPLACE INTO item_meta(item_id, name, sell_price, quality, item_class, icon_url)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (iid, name, sell_price, quality, item_class, icon_url),
         )
     conn.commit()
 
@@ -195,12 +268,15 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
 
     curr_map = {}
     per_item_prices = defaultdict(list)
+    per_item_offers = defaultdict(list)
     per_item_qty = defaultdict(int)
     per_item_count = defaultdict(int)
+    per_item_suffix = defaultdict(int)
 
     for a in auctions:
         aid = a.get("id")
-        item_id = a.get("item", {}).get("id")
+        item_obj = a.get("item", {}) or {}
+        item_id = item_obj.get("id")
         qty = int(a.get("quantity", 1))
         time_left = a.get("time_left", "LONG")
 
@@ -216,8 +292,23 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
 
         curr_map[aid] = (item_id, unit_price, qty, time_left)
         per_item_prices[item_id].extend([unit_price] * min(qty, 200))
+        per_item_offers[item_id].append((unit_price, qty))
         per_item_qty[item_id] += qty
         per_item_count[item_id] += 1
+
+        if (
+            bool(item_obj.get("rand"))
+            or bool(item_obj.get("seed"))
+            or bool(item_obj.get("bonus_lists"))
+        ):
+            per_item_suffix[item_id] = 1
+
+    # Duplikat-Schutz: Wenn Blizzard noch keinen neuen Stundenscan geliefert hat, ueberspringen
+    if prev_map and curr_map == prev_map:
+        last_id_row = cur.execute("SELECT MAX(id) FROM snapshots").fetchone()
+        if last_id_row and last_id_row[0]:
+            print("[SYNC SKIP] Blizzard-Daten seit letztem Scan unveraendert.")
+            return last_id_row[0]
 
     est_sold = defaultdict(int)
     for aid, (item_id, _price, prev_qty, prev_tl) in prev_map.items():
@@ -241,26 +332,33 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
         n = len(prices)
         min_u = prices[0]
         p10_u = prices[max(0, int(n * 0.10) - 1)]
+        p25_u = prices[max(0, int(n * 0.25) - 1)]
         med_u = int(statistics.median(prices))
+        floor_cap = min_u * 1.05
+        bottom_qty = sum(q for p, q in per_item_offers[item_id] if p <= floor_cap)
+
         rows.append(
             (
                 snap_id,
                 item_id,
                 min_u,
                 p10_u,
+                p25_u,
                 med_u,
                 per_item_qty[item_id],
                 per_item_count[item_id],
                 est_sold.get(item_id, 0),
+                bottom_qty,
+                per_item_suffix.get(item_id, 0),
             )
         )
 
     cur.executemany(
         """
         INSERT INTO item_stats(
-            snapshot_id, item_id, min_unit, p10_unit, median_unit,
-            total_qty, listing_count, est_sold_since_prev
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            snapshot_id, item_id, min_unit, p10_unit, p25_unit, median_unit,
+            total_qty, listing_count, est_sold_since_prev, bottom_qty, has_random_suffix
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         rows,
     )
@@ -271,7 +369,6 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
         [(aid, v[0], v[1], v[2], v[3]) for aid, v in curr_map.items()],
     )
 
-    # Historie auf 14 Tage begrenzen
     cutoff_ts = now_utc_ts - (KEEP_DAYS * 86400)
     old_ids = [r[0] for r in cur.execute("SELECT id FROM snapshots WHERE ts_utc < ?", (cutoff_ts,))]
     if old_ids:
@@ -281,7 +378,6 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
 
     conn.commit()
 
-    # Einmal taeglich Datenbank komprimieren
     if snap_id % 24 == 0:
         conn.execute("VACUUM")
 
@@ -289,7 +385,14 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
     return snap_id
 
 
-def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
+def calc_ref_price(p10_u: int, p25_u: int, listing_cnt: int) -> int:
+    # Realistisches Verkaufsniveau: P10 bei liquiden Items, P25 bei kleineren Bestaenden
+    if listing_cnt >= 10:
+        return p10_u
+    return p25_u if p25_u > 0 else p10_u
+
+
+def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None:
     cur = conn.cursor()
     snaps = cur.execute(
         "SELECT id, ts_utc, weekday, hour, total_listings FROM snapshots ORDER BY id DESC LIMIT 336"
@@ -302,7 +405,8 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
 
     latest_rows = cur.execute(
         """
-        SELECT item_id, min_unit, p10_unit, median_unit, total_qty, listing_count
+        SELECT item_id, min_unit, p10_unit, COALESCE(p25_unit, 0), median_unit,
+               total_qty, listing_count, COALESCE(bottom_qty, 0), COALESCE(has_random_suffix, 0)
         FROM item_stats WHERE snapshot_id = ? AND total_qty >= 4
         """,
         (latest_id,),
@@ -311,7 +415,9 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
     placeholders = ",".join("?" * len(snap_ids))
     hist_rows = cur.execute(
         f"""
-        SELECT snapshot_id, item_id, min_unit, p10_unit, median_unit, total_qty, est_sold_since_prev
+        SELECT snapshot_id, item_id, min_unit, p10_unit, COALESCE(p25_unit, 0),
+               median_unit, total_qty, listing_count, est_sold_since_prev,
+               COALESCE(has_random_suffix, 0)
         FROM item_stats WHERE snapshot_id IN ({placeholders})
         ORDER BY snapshot_id ASC
         """,
@@ -319,18 +425,32 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
     ).fetchall()
 
     hist_by_item = defaultdict(list)
+    total_market_sold = 0
     for r in hist_rows:
         hist_by_item[r[1]].append(r)
+        total_market_sold += r[8]
 
     vendor_map = {
-        row[0]: (row[1], row[2], row[3])
-        for row in cur.execute("SELECT item_id, name, sell_price, quality FROM item_meta")
+        row[0]: (row[1], row[2], row[3], row[4] or "", row[5] or "")
+        for row in cur.execute(
+            "SELECT item_id, name, sell_price, quality, item_class, icon_url FROM item_meta"
+        )
     }
 
-    is_collecting = len(snaps) < 2
+    is_collecting = len(snaps) < 2 or total_market_sold == 0
     candidates = []
 
-    for item_id, cur_min, cur_p10, cur_med, cur_qty, cur_cnt in latest_rows:
+    for (
+        item_id,
+        cur_min,
+        cur_p10,
+        cur_p25,
+        cur_med,
+        cur_qty,
+        cur_cnt,
+        cur_bottom_qty,
+        cur_suffix,
+    ) in latest_rows:
         h = hist_by_item.get(item_id, [])
         if not h:
             continue
@@ -343,13 +463,20 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
         if buy_price <= 0:
             continue
 
-        name, vendor_price, quality = vendor_map.get(item_id, (f"Item #{item_id}", 0, "COMMON"))
+        has_suffix = cur_suffix == 1 or any(r[9] == 1 for r in h)
+        if has_suffix:
+            flags.append("SUFFIX_GEAR")
+
+        name, vendor_price, quality, item_class, icon_url = vendor_map.get(
+            item_id, (f"Item #{item_id}", 0, "COMMON", "", "")
+        )
+        clean_icon = "" if icon_url == "NONE" else icon_url
 
         if is_collecting:
-            # Erst-Lauf: Vorschau anhand aktuellem Intraday-Spread (Min vs. Median)
-            if cur_med <= buy_price or cur_cnt < 5:
+            ref_now = cur_p25 if cur_p25 > 0 else cur_p10
+            if ref_now <= buy_price or cur_cnt < 5:
                 continue
-            target_sell = cur_med
+            target_sell = ref_now
             est_deposit = int(vendor_price * 0.30)
             net_profit = int(target_sell * (1.0 - AH_CUT) - buy_price - est_deposit)
             if net_profit <= 0:
@@ -357,16 +484,20 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
             net_roi = (net_profit / buy_price) * 100.0
             if net_roi < 10.0:
                 continue
-            score = min(65.0, net_roi * 0.6 + min(25.0, cur_cnt * 0.8))
+            penalty = 25.0 if has_suffix else 0.0
+            score = max(1.0, min(65.0, net_roi * 0.6 + min(25.0, cur_cnt * 0.8) - penalty))
             candidates.append(
                 {
                     "item_id": item_id,
                     "name": name,
                     "quality": quality,
+                    "item_class": item_class,
+                    "icon_url": clean_icon,
+                    "ref_label": "P25" if cur_p25 > 0 else "P10",
                     "score": round(score, 1),
                     "buy_now": buy_price,
                     "cur_min": cur_min,
-                    "fair_value": cur_med,
+                    "fair_value": ref_now,
                     "target_sell": target_sell,
                     "est_deposit": est_deposit,
                     "net_profit": net_profit,
@@ -374,11 +505,15 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
                     "daily_sold_est": 0.0,
                     "flip_rate_pct": 0.0,
                     "cur_qty": cur_qty,
+                    "bottom_qty": cur_bottom_qty,
                     "rec_qty": max(1, min(10, cur_qty // 4)),
                     "best_buy_window": "Sammelt Daten...",
                     "best_sell_window": "Sammelt Daten...",
                     "flags": flags,
-                    "history": [[snap_meta[r[0]][0], r[2], r[4]] for r in h[-48:]],
+                    "history": [
+                        [snap_meta[r[0]][0], r[2], calc_ref_price(r[3], r[4], r[7]), r[5], r[6]]
+                        for r in h[-72:]
+                    ],
                     "heatmap": {},
                 }
             )
@@ -387,13 +522,15 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
         if len(h) < 2:
             continue
 
-        hist_medians = [r[4] for r in h]
-        fair_value = int(statistics.median(hist_medians))
+        avg_cnt = statistics.mean(r[7] for r in h)
+        ref_label = "P10" if avg_cnt >= 10 else "P25"
+        hist_refs = [calc_ref_price(r[3], r[4], r[7]) for r in h]
+        fair_value = int(statistics.median(hist_refs))
         if fair_value <= 0:
             continue
 
-        total_sold = sum(r[6] for r in h)
-        avg_qty = max(1.0, statistics.mean(r[5] for r in h))
+        total_sold = sum(r[8] for r in h)
+        avg_qty = max(1.0, statistics.mean(r[6] for r in h))
         daily_sold = (total_sold / hours_span) * 24.0
         daily_turnover = min(1.0, daily_sold / avg_qty)
 
@@ -402,12 +539,12 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
         if daily_sold < 5.0:
             flags.append("LOW_LIQ")
 
-        # Zeitfenster-Matrix: Wochentag (0..6) x 4h-Block (0,4,8,12,16,20)
+        # Zeitfenster-Matrix auf Basis des realistischen Referenzpreises (P10/P25)
         slot_prices = defaultdict(list)
         for r in h:
             _, wd, hr = snap_meta[r[0]]
             block = (hr // 4) * 4
-            slot_prices[(wd, block)].append(r[4])
+            slot_prices[(wd, block)].append(calc_ref_price(r[3], r[4], r[7]))
 
         slot_medians = {k: int(statistics.median(v)) for k, v in slot_prices.items()}
         best_buy_key = min(slot_medians, key=slot_medians.get)
@@ -439,6 +576,8 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
             penalty += 15.0
         if "LOW_LIQ" in flags:
             penalty += 10.0
+        if "SUFFIX_GEAR" in flags:
+            penalty += 25.0
 
         score = max(
             1.0,
@@ -460,6 +599,9 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
                 "item_id": item_id,
                 "name": name,
                 "quality": quality,
+                "item_class": item_class,
+                "icon_url": clean_icon,
+                "ref_label": ref_label,
                 "score": round(score, 1),
                 "buy_now": buy_price,
                 "cur_min": cur_min,
@@ -471,11 +613,15 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
                 "daily_sold_est": round(daily_sold, 1),
                 "flip_rate_pct": round(daily_turnover * 100.0, 1),
                 "cur_qty": cur_qty,
+                "bottom_qty": cur_bottom_qty,
                 "rec_qty": rec_qty,
                 "best_buy_window": f"{WEEKDAYS_DE[best_buy_key[0]]} {best_buy_key[1]:02d}-{best_buy_key[1]+4:02d}h",
                 "best_sell_window": f"{WEEKDAYS_DE[best_sell_key[0]]} {best_sell_key[1]:02d}-{best_sell_key[1]+4:02d}h",
                 "flags": flags,
-                "history": [[snap_meta[r[0]][0], r[2], r[4]] for r in h[-72:]],
+                "history": [
+                    [snap_meta[r[0]][0], r[2], calc_ref_price(r[3], r[4], r[7]), r[5], r[6]]
+                    for r in h[-72:]
+                ],
                 "heatmap": heatmap,
             }
         )
@@ -483,15 +629,18 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 60) -> None:
     candidates.sort(key=lambda x: x["score"], reverse=True)
     top = candidates[:top_n]
 
-    # Deutsche Item-Namen und Vendor-Preise fuer Top-Kandidaten nachladen
+    # Deutsche Namen, Kategorien und offizielle Icons nachladen
     fetch_missing_item_meta(conn, token, [c["item_id"] for c in top])
     for c in top:
         row = cur.execute(
-            "SELECT name, quality FROM item_meta WHERE item_id = ?", (c["item_id"],)
+            "SELECT name, quality, item_class, icon_url FROM item_meta WHERE item_id = ?",
+            (c["item_id"],),
         ).fetchone()
         if row:
             c["name"] = row[0]
             c["quality"] = row[1]
+            c["item_class"] = row[2] or ""
+            c["icon_url"] = "" if row[3] == "NONE" else (row[3] or "")
 
     export_payload = {
         "market": "EU / Normal (PvE) / Allianz",
