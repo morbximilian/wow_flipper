@@ -15,7 +15,7 @@
     margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     background: var(--bg); color: var(--text); line-height: 1.45;
   }
-  .wrap { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 20px; }
   header {
     display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between;
     align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--border);
@@ -60,9 +60,9 @@
     background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
     overflow: hidden;
   }
-  .table-wrap { overflow-x: auto; max-height: 72vh; }
+  .table-wrap { overflow-x: auto; max-height: 74vh; }
   table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-  th, td { padding: 10px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
   th { position: sticky; top: 0; background: var(--panel-2); color: var(--muted); font-size: 0.74rem; text-transform: uppercase; z-index: 2; }
   tbody tr { cursor: pointer; transition: background 0.12s; }
   tbody tr:hover { background: rgba(245, 185, 66, 0.07); }
@@ -76,17 +76,50 @@
   .b-low { background: rgba(239, 68, 68, 0.18); color: var(--red); }
   .flag {
     display: inline-block; font-size: 0.68rem; padding: 1px 5px; border-radius: 4px;
-    background: rgba(239, 68, 68, 0.2); color: #fca5a5; margin-left: 4px; vertical-align: middle;
+    background: rgba(239, 68, 68, 0.2); color: #fca5a5; margin-left: 5px; vertical-align: middle;
   }
+  .item-cell { display: inline-flex; align-items: center; gap: 8px; }
+  .item-icon {
+    width: 26px; height: 26px; border-radius: 5px; object-fit: cover;
+    background: #0c0f14; flex-shrink: 0; border: 1.5px solid #475569;
+  }
+  .item-icon-lg { width: 38px; height: 38px; border-radius: 7px; }
+  .item-icon-fallback {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; color: var(--muted);
+  }
+  .qb-POOR { border-color: #9d9d9d; } .qb-COMMON { border-color: #cbd5e1; }
+  .qb-UNCOMMON { border-color: #1eff00; } .qb-RARE { border-color: #0070dd; }
+  .qb-EPIC { border-color: #a335ee; } .qb-LEGENDARY { border-color: #ff8000; }
   .detail { padding: 16px; position: sticky; top: 16px; }
-  .detail h2 { margin: 0 0 4px 0; font-size: 1.15rem; }
+  .detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+  .detail h2 { margin: 0; font-size: 1.12rem; }
   .action-box {
     background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 12px; margin: 12px 0; font-size: 0.88rem;
+    padding: 12px; margin: 12px 0; font-size: 0.87rem;
   }
-  .action-row { display: flex; justify-content: space-between; margin: 5px 0; }
-  .sec-title { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; margin: 14px 0 6px; }
-  .chart-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+  .action-row { display: flex; justify-content: space-between; gap: 10px; margin: 5px 0; }
+  .sec-title { font-size: 0.76rem; color: var(--muted); text-transform: uppercase; margin: 14px 0 6px; }
+  .chart-box {
+    position: relative; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px; user-select: none;
+  }
+  .chart-legend {
+    display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.72rem;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .leg-dot {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px;
+    vertical-align: middle;
+  }
+  .chart-tooltip {
+    position: absolute; top: 30px; pointer-events: none; display: none;
+    background: rgba(15, 20, 30, 0.96); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 0.76rem; min-width: 175px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55); z-index: 10;
+  }
+  .ct-time { font-weight: 700; color: var(--gold); margin-bottom: 4px; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+  .ct-row { display: flex; justify-content: space-between; gap: 12px; margin: 2px 0; }
   .hm { display: grid; grid-template-columns: 34px repeat(6, 1fr); gap: 3px; font-size: 0.7rem; }
   .hm-cell {
     padding: 5px 2px; text-align: center; border-radius: 4px; background: var(--bg);
@@ -126,16 +159,26 @@
       <input type="text" id="fSearch" placeholder="z.B. Lotus, Erz..." oninput="render()" />
     </div>
     <div class="fgroup">
+      <label>Kategorie</label>
+      <select id="fClass" onchange="render()">
+        <option value="">Alle Kategorien</option>
+      </select>
+    </div>
+    <div class="fgroup">
       <label>Min. Score</label>
-      <input type="number" id="fScore" value="25" min="0" max="100" style="width:85px" oninput="render()" />
+      <input type="number" id="fScore" value="25" min="0" max="100" style="width:82px" oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Min. Gewinn (Gold)</label>
+      <input type="number" id="fMinProfit" placeholder="0" min="0" step="0.5" style="width:98px" oninput="render()" />
     </div>
     <div class="fgroup">
       <label>Min. Flip-Rate %/Tag</label>
-      <input type="number" id="fFlip" value="0" min="0" max="100" style="width:105px" oninput="render()" />
+      <input type="number" id="fFlip" value="0" min="0" max="100" style="width:100px" oninput="render()" />
     </div>
     <div class="fgroup">
       <label>Max. Einkauf (Gold)</label>
-      <input type="number" id="fMaxGold" placeholder="alle" min="0" style="width:105px" oninput="render()" />
+      <input type="number" id="fMaxGold" placeholder="alle" min="0" style="width:98px" oninput="render()" />
     </div>
     <div class="fgroup">
       <label>Sortierung</label>
@@ -186,7 +229,7 @@ let DATA = null;
 let SELECTED_ID = null;
 
 function esc(str) {
-  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  return String(str ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
 function fmtGoldHtml(copper) {
@@ -210,6 +253,32 @@ function fmtGoldPlain(copper) {
   return `${copper < 0 ? '-' : ''}${g}g ${s}s ${c}c`;
 }
 
+function fmtShortDate(ts) {
+  const d = new Date(ts * 1000);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${dd}.${mm}. ${hh}:${mi}`;
+}
+
+function iconHtml(item, large = false) {
+  const cls = `item-icon ${large ? 'item-icon-lg' : ''} qb-${esc(item.quality || 'COMMON')}`;
+  if (item.icon_url) {
+    return `<img class="${cls}" src="${esc(item.icon_url)}" alt="" loading="lazy" onerror="this.outerHTML='<span class=&quot;${cls} item-icon-fallback&quot;>?</span>'" />`;
+  }
+  return `<span class="${cls} item-icon-fallback">?</span>`;
+}
+
+function populateCategories() {
+  const sel = document.getElementById('fClass');
+  const prev = sel.value;
+  const classes = [...new Set((DATA?.flips || []).map(x => x.item_class).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Alle Kategorien</option>' +
+    classes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if (classes.includes(prev)) sel.value = prev;
+}
+
 async function loadData() {
   try {
     const res = await fetch('./flips_export.json?t=' + Date.now());
@@ -224,11 +293,12 @@ async function loadData() {
     if (DATA.status === 'collecting' || DATA.snapshots < 24) {
       banner.style.display = 'block';
       banner.textContent = DATA.status === 'collecting'
-        ? 'Erstlauf abgeschlossen (1 Snapshot): Flip-Raten starten ab dem nächsten Stundenscan. Wochentags-Prognosen werden nach 24 bis 168 Stunden präzise.'
-        : `Historie im Aufbau (${DATA.snapshots} Snapshots / ${DATA.hours_span}h): Flip-Raten sind bereits aktiv, Wochentags-Muster stabilisieren sich über die ersten 7 Tage.`;
+        ? 'Datenbasis im Startmodus: Flip-Raten starten nach zwei unterschiedlichen Stundenscans. Wochentags-Prognosen werden nach 3 bis 7 Tagen belastbar.'
+        : `Historie im Aufbau (${DATA.snapshots} Snapshots / ${DATA.hours_span}h): Flip-Raten laufen bereits, Wochentags-Muster stabilisieren sich über die ersten 7 Tage.`;
     } else {
       banner.style.display = 'none';
     }
+    populateCategories();
     render();
   } catch (err) {
     document.getElementById('metaLine').textContent = 'Noch keine flips_export.json gefunden. Bitte GitHub Action einmal ausführen.';
@@ -238,7 +308,10 @@ async function loadData() {
 function getFiltered() {
   if (!DATA || !DATA.flips) return [];
   const q = document.getElementById('fSearch').value.trim().toLowerCase();
+  const cat = document.getElementById('fClass').value;
   const minScore = Number(document.getElementById('fScore').value) || 0;
+  const minProfitRaw = document.getElementById('fMinProfit').value;
+  const minProfitCopper = minProfitRaw !== '' ? Number(minProfitRaw) * 10000 : 0;
   const minFlip = Number(document.getElementById('fFlip').value) || 0;
   const maxGoldRaw = document.getElementById('fMaxGold').value;
   const maxCopper = maxGoldRaw !== '' ? Number(maxGoldRaw) * 10000 : Infinity;
@@ -248,7 +321,9 @@ function getFiltered() {
   return DATA.flips
     .filter(x =>
       (!q || x.name.toLowerCase().includes(q) || String(x.item_id).includes(q)) &&
+      (!cat || x.item_class === cat) &&
       x.score >= minScore &&
+      x.net_profit >= minProfitCopper &&
       x.flip_rate_pct >= minFlip &&
       x.buy_now <= maxCopper &&
       (!safeOnly || x.flags.length === 0)
@@ -279,7 +354,12 @@ function render() {
     return `
       <tr class="${x.item_id === SELECTED_ID ? 'active' : ''}" onclick="selectItem(${x.item_id})">
         <td><span class="badge ${cls}">${x.score.toFixed(0)}</span></td>
-        <td><span class="q-${esc(x.quality)}">${esc(x.name)}</span>${flagsHtml}</td>
+        <td>
+          <div class="item-cell">
+            ${iconHtml(x, false)}
+            <span><span class="q-${esc(x.quality)}">${esc(x.name)}</span>${flagsHtml}</span>
+          </div>
+        </td>
         <td class="num">${fmtGoldHtml(x.buy_now)}</td>
         <td class="num">${fmtGoldHtml(x.target_sell)}</td>
         <td class="num" style="color:var(--green)">${fmtGoldHtml(x.net_profit)}</td>
@@ -298,32 +378,151 @@ function selectItem(id) {
   render();
 }
 
-function buildChartSvg(item) {
-  const h = item.history || [];
-  if (h.length < 2) {
-    return '<div class="sub" style="padding:18px;text-align:center">Preisverlauf erscheint ab 2 Snapshots.</div>';
-  }
-  const w = 440, ht = 150, pad = 16;
-  const allVals = h.flatMap(p => [p[1], p[2]]).concat([item.buy_now, item.target_sell]);
-  const minV = Math.min(...allVals) * 0.95;
-  const maxV = Math.max(...allVals) * 1.05 || 1;
-  const sx = i => pad + (i / (h.length - 1)) * (w - 2 * pad);
-  const sy = v => ht - pad - ((v - minV) / (maxV - minV)) * (ht - 2 * pad);
+function normalizeHistory(raw) {
+  return (raw || []).map(p => ({
+    ts: p[0],
+    min: p[1],
+    ref: p[2],
+    med: p.length >= 4 ? p[3] : p[2],
+    qty: p.length >= 5 ? p[4] : null
+  }));
+}
 
-  const medPts = h.map((p, i) => `${sx(i).toFixed(1)},${sy(p[2]).toFixed(1)}`).join(' ');
-  const minPts = h.map((p, i) => `${sx(i).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(' ');
+function buildChartHtml(item) {
+  const pts = normalizeHistory(item.history);
+  const refLbl = esc(item.ref_label || 'P10/P25');
+  if (pts.length < 2) {
+    return '<div class="sub" style="padding:18px;text-align:center">Preisverlauf erscheint ab 2 unterschiedlichen Snapshots.</div>';
+  }
+
+  const w = 440, ht = 172, padL = 14, padR = 14, padT = 16, padB = 22;
+  const minTs = pts[0].ts;
+  const maxTs = pts[pts.length - 1].ts;
+  const tsSpan = Math.max(1, maxTs - minTs);
+
+  const vals = pts.flatMap(p => [p.min, p.ref]).concat([item.buy_now, item.target_sell]);
+  const minV = Math.min(...vals) * 0.94;
+  const maxV = Math.max(...vals) * 1.06 || 1;
+
+  const sx = ts => padL + ((ts - minTs) / tsSpan) * (w - padL - padR);
+  const sy = v => ht - padB - ((v - minV) / (maxV - minV)) * (ht - padT - padB);
+
+  const refPath = pts.map(p => `${sx(p.ts).toFixed(1)},${sy(p.ref).toFixed(1)}`).join(' ');
+  const minPath = pts.map(p => `${sx(p.ts).toFixed(1)},${sy(p.min).toFixed(1)}`).join(' ');
   const yBuy = sy(item.buy_now).toFixed(1);
   const ySell = sy(item.target_sell).toFixed(1);
 
   return `
-    <svg viewBox="0 0 ${w} ${ht}" style="width:100%;height:auto;display:block">
-      <line x1="${pad}" y1="${ySell}" x2="${w-pad}" y2="${ySell}" stroke="#f5b942" stroke-dasharray="4 4" stroke-width="1.2"/>
-      <line x1="${pad}" y1="${yBuy}" x2="${w-pad}" y2="${yBuy}" stroke="#22c55e" stroke-dasharray="4 4" stroke-width="1.2"/>
-      <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${medPts}"/>
-      <polyline fill="none" stroke="#94a3b8" stroke-width="1.2" opacity="0.7" points="${minPts}"/>
-      <text x="${pad+4}" y="${Math.max(12, ySell-4)}" fill="#f5b942" font-size="10">Ziel-VK: ${fmtGoldPlain(item.target_sell)}</text>
-      <text x="${pad+4}" y="${Math.min(ht-4, Number(yBuy)+11)}" fill="#22c55e" font-size="10">Kauf: ${fmtGoldPlain(item.buy_now)}</text>
-    </svg>`;
+    <div class="chart-legend">
+      <span><i class="leg-dot" style="background:#38bdf8"></i>Marktpreis (${refLbl})</span>
+      <span><i class="leg-dot" style="background:#94a3b8"></i>Min-Preis</span>
+      <span><i class="leg-dot" style="background:#f5b942"></i>Ziel-VK</span>
+      <span><i class="leg-dot" style="background:#22c55e"></i>Kauf</span>
+    </div>
+    <svg id="priceChartSvg" viewBox="0 0 ${w} ${ht}" style="width:100%;height:auto;display:block;touch-action:none">
+      <line x1="${padL}" y1="${ySell}" x2="${w-padR}" y2="${ySell}" stroke="#f5b942" stroke-dasharray="4 4" stroke-width="1.2"/>
+      <line x1="${padL}" y1="${yBuy}" x2="${w-padR}" y2="${yBuy}" stroke="#22c55e" stroke-dasharray="4 4" stroke-width="1.2"/>
+      <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${refPath}"/>
+      <polyline fill="none" stroke="#94a3b8" stroke-width="1.3" opacity="0.75" points="${minPath}"/>
+      <text x="${padL+2}" y="${Math.max(12, Number(ySell)-4)}" fill="#f5b942" font-size="9.5">Ziel-VK: ${fmtGoldPlain(item.target_sell)}</text>
+      <text x="${padL+2}" y="${Math.min(ht-padB-3, Number(yBuy)+11)}" fill="#22c55e" font-size="9.5">Kauf: ${fmtGoldPlain(item.buy_now)}</text>
+      <text x="${padL}" y="${ht-5}" fill="#8b9bb4" font-size="9">${fmtShortDate(minTs)}</text>
+      <text x="${w-padR}" y="${ht-5}" fill="#8b9bb4" font-size="9" text-anchor="end">${fmtShortDate(maxTs)}</text>
+
+      <line id="chLine" x1="0" y1="${padT}" x2="0" y2="${ht-padB}" stroke="#e2e8f0" stroke-dasharray="2 2" stroke-width="1" opacity="0"/>
+      <circle id="chDotRef" cx="0" cy="0" r="4" fill="#38bdf8" stroke="#0c0f14" stroke-width="1.5" opacity="0"/>
+      <circle id="chDotMin" cx="0" cy="0" r="3.5" fill="#94a3b8" stroke="#0c0f14" stroke-width="1.5" opacity="0"/>
+      <rect id="chOverlay" x="0" y="0" width="${w}" height="${ht}" fill="transparent" style="cursor:crosshair"/>
+    </svg>
+    <div class="chart-tooltip" id="chartTooltip"></div>
+  `;
+}
+
+function attachChartHover(item) {
+  const svg = document.getElementById('priceChartSvg');
+  const overlay = document.getElementById('chOverlay');
+  const tooltip = document.getElementById('chartTooltip');
+  if (!svg || !overlay || !tooltip) return;
+
+  const pts = normalizeHistory(item.history);
+  if (pts.length < 2) return;
+
+  const w = 440, ht = 172, padL = 14, padR = 14, padT = 16, padB = 22;
+  const minTs = pts[0].ts;
+  const tsSpan = Math.max(1, pts[pts.length - 1].ts - minTs);
+  const vals = pts.flatMap(p => [p.min, p.ref]).concat([item.buy_now, item.target_sell]);
+  const minV = Math.min(...vals) * 0.94;
+  const maxV = Math.max(...vals) * 1.06 || 1;
+  const sx = ts => padL + ((ts - minTs) / tsSpan) * (w - padL - padR);
+  const sy = v => ht - padB - ((v - minV) / (maxV - minV)) * (ht - padT - padB);
+
+  const line = document.getElementById('chLine');
+  const dotRef = document.getElementById('chDotRef');
+  const dotMin = document.getElementById('chDotMin');
+  const refLbl = esc(item.ref_label || 'P10/P25');
+
+  const updateAtClientX = (clientX) => {
+    const rect = svg.getBoundingClientRect();
+    const relX = ((clientX - rect.left) / rect.width) * w;
+
+    let best = pts[0];
+    let bestDist = Infinity;
+    for (const p of pts) {
+      const d = Math.abs(sx(p.ts) - relX);
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+
+    const cx = sx(best.ts);
+    const cyRef = sy(best.ref);
+    const cyMin = sy(best.min);
+
+    line.setAttribute('x1', cx);
+    line.setAttribute('x2', cx);
+    line.setAttribute('opacity', '0.65');
+    dotRef.setAttribute('cx', cx);
+    dotRef.setAttribute('cy', cyRef);
+    dotRef.setAttribute('opacity', '1');
+    dotMin.setAttribute('cx', cx);
+    dotMin.setAttribute('cy', cyMin);
+    dotMin.setAttribute('opacity', '1');
+
+    tooltip.innerHTML = `
+      <div class="ct-time">${fmtShortDate(best.ts)} Uhr</div>
+      <div class="ct-row"><span>Marktpreis (${refLbl}):</span><span>${fmtGoldHtml(best.ref)}</span></div>
+      <div class="ct-row"><span>Min-Preis:</span><span>${fmtGoldHtml(best.min)}</span></div>
+      <div class="ct-row"><span>Median (Info):</span><span>${fmtGoldHtml(best.med)}</span></div>
+      ${best.qty !== null ? `<div class="ct-row"><span>AH-Bestand:</span><span>${best.qty} Stk</span></div>` : ''}
+    `;
+    tooltip.style.display = 'block';
+
+    const pctX = cx / w;
+    if (pctX > 0.55) {
+      tooltip.style.left = '10px';
+      tooltip.style.right = 'auto';
+    } else {
+      tooltip.style.right = '10px';
+      tooltip.style.left = 'auto';
+    }
+  };
+
+  const hide = () => {
+    line.setAttribute('opacity', '0');
+    dotRef.setAttribute('opacity', '0');
+    dotMin.setAttribute('opacity', '0');
+    tooltip.style.display = 'none';
+  };
+
+  overlay.addEventListener('mousemove', e => updateAtClientX(e.clientX));
+  overlay.addEventListener('mouseleave', hide);
+  overlay.addEventListener('touchstart', e => {
+    if (e.touches[0]) updateAtClientX(e.touches[0].clientX);
+  }, { passive: true });
+  overlay.addEventListener('touchmove', e => {
+    if (e.touches[0]) updateAtClientX(e.touches[0].clientX);
+  }, { passive: true });
 }
 
 function buildHeatmap(hm) {
@@ -353,8 +552,10 @@ function buildHeatmap(hm) {
   return html + '</div>';
 }
 
-function copyText(txt, btn) {
-  navigator.clipboard.writeText(txt);
+function copySelectedName(btn) {
+  const item = (DATA?.flips || []).find(x => x.item_id === SELECTED_ID);
+  if (!item) return;
+  navigator.clipboard.writeText(item.name);
   const old = btn.textContent;
   btn.textContent = 'Kopiert!';
   setTimeout(() => btn.textContent = old, 1200);
@@ -365,13 +566,24 @@ function renderDetail(item) {
   if (!item) return;
   const totalInv = item.buy_now * item.rec_qty;
   const totalNet = item.net_profit * item.rec_qty;
+  const refLbl = esc(item.ref_label || 'P10/P25');
+  const floorInfo = item.bottom_qty !== undefined ? `${item.bottom_qty} Stk` : '-';
+  const classText = item.item_class ? ` | ${esc(item.item_class)}` : '';
+
   el.innerHTML = `
-    <h2 class="q-${esc(item.quality)}">${esc(item.name)}</h2>
-    <div class="sub">Item-ID #${item.item_id} | Bestand im AH: ${item.cur_qty} | Gesch. Verkäufe/Tag: ${item.daily_sold_est}</div>
+    <div class="detail-head">
+      ${iconHtml(item, true)}
+      <div>
+        <h2 class="q-${esc(item.quality)}">${esc(item.name)}</h2>
+        <div class="sub">ID #${item.item_id}${classText} | Bestand: ${item.cur_qty} | Verkäufe/Tag: ${item.daily_sold_est}</div>
+      </div>
+    </div>
 
     <div class="action-box">
       <div class="action-row"><span>Empfohlene Kaufmenge:</span><strong>${item.rec_qty} Stk</strong></div>
+      <div class="action-row"><span>Günstigster Bestand (+5% Floor):</span><span>${floorInfo}</span></div>
       <div class="action-row"><span>Max. Einkaufspreis / Stk:</span><span>${fmtGoldHtml(item.buy_now)}</span></div>
+      <div class="action-row"><span>Fair Value (${refLbl}):</span><span>${fmtGoldHtml(item.fair_value)}</span></div>
       <div class="action-row"><span>Ziel-Verkaufspreis / Stk:</span><span>${fmtGoldHtml(item.target_sell)}</span></div>
       <div class="action-row"><span>Gesch. Relist-Deposit / Stk:</span><span>${fmtGoldHtml(item.est_deposit)}</span></div>
       <div class="action-row" style="border-top:1px solid var(--border);padding-top:6px;margin-top:6px">
@@ -381,17 +593,19 @@ function renderDetail(item) {
       <div class="action-row"><span>Bestes Kauf- / VK-Fenster:</span><span>${esc(item.best_buy_window)} / ${esc(item.best_sell_window)}</span></div>
     </div>
 
-    <div class="sec-title">Preisverlauf (Blau: Median | Grau: Min)</div>
-    <div class="chart-box">${buildChartSvg(item)}</div>
+    <div class="sec-title">Interaktiver Preisverlauf (Maus drüberfahren für Details)</div>
+    <div class="chart-box">${buildChartHtml(item)}</div>
 
-    <div class="sec-title">Timing-Heatmap (Grün = günstig kaufen | Gold = teuer verkaufen)</div>
+    <div class="sec-title">Timing-Heatmap auf ${refLbl}-Basis (Grün = kaufen | Gold = verkaufen)</div>
     ${buildHeatmap(item.heatmap)}
 
     <div class="tools">
-      <button class="btn" onclick="copyText('${esc(item.name).replace(/'/g, "\\'")}', this)">Name für Auctionator kopieren</button>
+      <button class="btn" onclick="copySelectedName(this)">Name für Auctionator kopieren</button>
       <a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.wowhead.com/classic/de/item=${item.item_id}">Wowhead öffnen</a>
     </div>
   `;
+
+  attachChartHover(item);
 }
 
 loadData();
