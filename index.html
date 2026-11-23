@@ -1,1 +1,400 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WoW: Forever AH Flip Advisor (EU / Normal / Allianz)</title>
+<style>
+  :root {
+    --bg: #0c0f14; --panel: #141923; --panel-2: #1b2230; --border: #283246;
+    --text: #e6edf7; --muted: #8b9bb4; --gold: #f5b942; --green: #22c55e;
+    --amber: #f59e0b; --red: #ef4444; --blue: #38bdf8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.45;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  header {
+    display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between;
+    align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  h1 { margin: 0; font-size: 1.35rem; color: var(--gold); letter-spacing: 0.3px; }
+  .sub { font-size: 0.85rem; color: var(--muted); margin-top: 3px; }
+  .btn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;
+  }
+  .btn:hover { border-color: var(--gold); color: var(--gold); }
+  .banner {
+    margin-top: 14px; padding: 12px 16px; border-radius: 10px;
+    background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fde68a; font-size: 0.88rem; display: none;
+  }
+  .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px; margin: 16px 0;
+  }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .kpi .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
+  .kpi .val { font-size: 1.25rem; font-weight: 700; margin-top: 4px; }
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: end;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 16px;
+  }
+  .fgroup { display: flex; flex-direction: column; gap: 4px; }
+  .fgroup label { font-size: 0.74rem; color: var(--muted); }
+  .fgroup input, .fgroup select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    padding: 7px 10px; border-radius: 6px; font-size: 0.85rem;
+  }
+  .fcheck { display: flex; align-items: center; gap: 6px; padding: 7px 4px; font-size: 0.85rem; }
+  .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 1080px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden;
+  }
+  .table-wrap { overflow-x: auto; max-height: 72vh; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  th, td { padding: 10px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--panel-2); color: var(--muted); font-size: 0.74rem; text-transform: uppercase; z-index: 2; }
+  tbody tr { cursor: pointer; transition: background 0.12s; }
+  tbody tr:hover { background: rgba(245, 185, 66, 0.07); }
+  tbody tr.active { background: rgba(245, 185, 66, 0.14); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .badge {
+    display: inline-block; padding: 2px 7px; border-radius: 999px; font-weight: 700; font-size: 0.76rem;
+  }
+  .b-high { background: rgba(34, 197, 94, 0.18); color: var(--green); }
+  .b-mid { background: rgba(245, 158, 11, 0.18); color: var(--amber); }
+  .b-low { background: rgba(239, 68, 68, 0.18); color: var(--red); }
+  .flag {
+    display: inline-block; font-size: 0.68rem; padding: 1px 5px; border-radius: 4px;
+    background: rgba(239, 68, 68, 0.2); color: #fca5a5; margin-left: 4px; vertical-align: middle;
+  }
+  .detail { padding: 16px; position: sticky; top: 16px; }
+  .detail h2 { margin: 0 0 4px 0; font-size: 1.15rem; }
+  .action-box {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; margin: 12px 0; font-size: 0.88rem;
+  }
+  .action-row { display: flex; justify-content: space-between; margin: 5px 0; }
+  .sec-title { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; margin: 14px 0 6px; }
+  .chart-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+  .hm { display: grid; grid-template-columns: 34px repeat(6, 1fr); gap: 3px; font-size: 0.7rem; }
+  .hm-cell {
+    padding: 5px 2px; text-align: center; border-radius: 4px; background: var(--bg);
+    color: var(--text); border: 1px solid rgba(255,255,255,0.04);
+  }
+  .hm-head { color: var(--muted); text-align: center; padding: 2px; font-size: 0.68rem; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .q-POOR { color: #9d9d9d; } .q-COMMON { color: #ffffff; } .q-UNCOMMON { color: #1eff00; }
+  .q-RARE { color: #0070dd; } .q-EPIC { color: #a335ee; } .q-LEGENDARY { color: #ff8000; }
+  .g { color: #ffd700; } .s { color: #c7c7cf; } .c { color: #eda55f; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>WoW: Forever AH Flip Advisor</h1>
+      <div class="sub" id="metaLine">Lade Live-Daten...</div>
+    </div>
+    <div>
+      <button class="btn" onclick="loadData()">Daten neu laden</button>
+    </div>
+  </header>
 
+  <div class="banner" id="statusBanner"></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="lbl">Empfohlene Flips</div><div class="val" id="kCount">-</div></div>
+    <div class="kpi"><div class="lbl">Bester Flip-Score</div><div class="val" id="kTopScore" style="color:var(--green)">-</div></div>
+    <div class="kpi"><div class="lbl">Ø Netto-ROI (gefiltert)</div><div class="val" id="kAvgRoi" style="color:var(--gold)">-</div></div>
+    <div class="kpi"><div class="lbl">Datenbasis (Ziel: 168h)</div><div class="val" id="kHistory">-</div></div>
+  </div>
+
+  <div class="filters">
+    <div class="fgroup">
+      <label>Item suchen</label>
+      <input type="text" id="fSearch" placeholder="z.B. Lotus, Erz..." oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Min. Score</label>
+      <input type="number" id="fScore" value="25" min="0" max="100" style="width:85px" oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Min. Flip-Rate %/Tag</label>
+      <input type="number" id="fFlip" value="0" min="0" max="100" style="width:105px" oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Max. Einkauf (Gold)</label>
+      <input type="number" id="fMaxGold" placeholder="alle" min="0" style="width:105px" oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Sortierung</label>
+      <select id="fSort" onchange="render()">
+        <option value="score">Flip-Score (hoch -> niedrig)</option>
+        <option value="net_profit">Netto-Gewinn / Stk</option>
+        <option value="net_roi_pct">Netto-ROI %</option>
+        <option value="flip_rate_pct">Flip-Rate %/Tag</option>
+        <option value="daily_sold_est">Verkäufe / Tag</option>
+      </select>
+    </div>
+    <label class="fcheck">
+      <input type="checkbox" id="fSafeOnly" onchange="render()" />
+      Ohne Warn-Flags
+    </label>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Score</th>
+              <th>Item</th>
+              <th class="num">Kauf jetzt</th>
+              <th class="num">Ziel-VK</th>
+              <th class="num">Netto/Stk</th>
+              <th class="num">ROI</th>
+              <th class="num">Flip/Tag</th>
+              <th>Kauf-Fenster</th>
+              <th>VK-Fenster</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card detail" id="detailPanel">
+      <div class="sub">Wähle links ein Item für Preisverlauf, Zeitfenster-Heatmap und Kaufplan.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let DATA = null;
+let SELECTED_ID = null;
+
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function fmtGoldHtml(copper) {
+  const neg = copper < 0 ? '-' : '';
+  const abs = Math.round(Math.abs(copper));
+  const g = Math.floor(abs / 10000);
+  const s = Math.floor((abs % 10000) / 100);
+  const c = abs % 100;
+  let out = neg;
+  if (g > 0) out += `<span class="g">${g}g</span> `;
+  if (g > 0 || s > 0) out += `<span class="s">${String(s).padStart(g > 0 ? 2 : 1, '0')}s</span> `;
+  out += `<span class="c">${String(c).padStart((g > 0 || s > 0) ? 2 : 1, '0')}c</span>`;
+  return out;
+}
+
+function fmtGoldPlain(copper) {
+  const abs = Math.round(Math.abs(copper));
+  const g = Math.floor(abs / 10000);
+  const s = Math.floor((abs % 10000) / 100);
+  const c = abs % 100;
+  return `${copper < 0 ? '-' : ''}${g}g ${s}s ${c}c`;
+}
+
+async function loadData() {
+  try {
+    const res = await fetch('./flips_export.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    DATA = await res.json();
+    const dt = new Date(DATA.updated_utc * 1000).toLocaleString('de-DE');
+    document.getElementById('metaLine').textContent =
+      `${DATA.market} | Letzter Sync: ${dt} | ${DATA.total_listings.toLocaleString('de-DE')} Auktionen`;
+    document.getElementById('kHistory').textContent = `${DATA.snapshots} Scans (${DATA.hours_span}h)`;
+
+    const banner = document.getElementById('statusBanner');
+    if (DATA.status === 'collecting' || DATA.snapshots < 24) {
+      banner.style.display = 'block';
+      banner.textContent = DATA.status === 'collecting'
+        ? 'Erstlauf abgeschlossen (1 Snapshot): Flip-Raten starten ab dem nächsten Stundenscan. Wochentags-Prognosen werden nach 24 bis 168 Stunden präzise.'
+        : `Historie im Aufbau (${DATA.snapshots} Snapshots / ${DATA.hours_span}h): Flip-Raten sind bereits aktiv, Wochentags-Muster stabilisieren sich über die ersten 7 Tage.`;
+    } else {
+      banner.style.display = 'none';
+    }
+    render();
+  } catch (err) {
+    document.getElementById('metaLine').textContent = 'Noch keine flips_export.json gefunden. Bitte GitHub Action einmal ausführen.';
+  }
+}
+
+function getFiltered() {
+  if (!DATA || !DATA.flips) return [];
+  const q = document.getElementById('fSearch').value.trim().toLowerCase();
+  const minScore = Number(document.getElementById('fScore').value) || 0;
+  const minFlip = Number(document.getElementById('fFlip').value) || 0;
+  const maxGoldRaw = document.getElementById('fMaxGold').value;
+  const maxCopper = maxGoldRaw !== '' ? Number(maxGoldRaw) * 10000 : Infinity;
+  const safeOnly = document.getElementById('fSafeOnly').checked;
+  const sortKey = document.getElementById('fSort').value;
+
+  return DATA.flips
+    .filter(x =>
+      (!q || x.name.toLowerCase().includes(q) || String(x.item_id).includes(q)) &&
+      x.score >= minScore &&
+      x.flip_rate_pct >= minFlip &&
+      x.buy_now <= maxCopper &&
+      (!safeOnly || x.flags.length === 0)
+    )
+    .sort((a, b) => b[sortKey] - a[sortKey]);
+}
+
+function render() {
+  const list = getFiltered();
+  document.getElementById('kCount').textContent = list.length;
+  document.getElementById('kTopScore').textContent = list.length ? list[0].score.toFixed(1) : '-';
+  const avgRoi = list.length ? list.reduce((s, x) => s + x.net_roi_pct, 0) / list.length : 0;
+  document.getElementById('kAvgRoi').textContent = list.length ? avgRoi.toFixed(1) + '%' : '-';
+
+  const tbody = document.getElementById('tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Keine Items passen zu den aktuellen Filtern.</td></tr>';
+    return;
+  }
+
+  if (!SELECTED_ID || !list.some(x => x.item_id === SELECTED_ID)) {
+    SELECTED_ID = list[0].item_id;
+  }
+
+  tbody.innerHTML = list.map(x => {
+    const cls = x.score >= 70 ? 'b-high' : x.score >= 45 ? 'b-mid' : 'b-low';
+    const flagsHtml = x.flags.map(f => `<span class="flag">${esc(f)}</span>`).join('');
+    return `
+      <tr class="${x.item_id === SELECTED_ID ? 'active' : ''}" onclick="selectItem(${x.item_id})">
+        <td><span class="badge ${cls}">${x.score.toFixed(0)}</span></td>
+        <td><span class="q-${esc(x.quality)}">${esc(x.name)}</span>${flagsHtml}</td>
+        <td class="num">${fmtGoldHtml(x.buy_now)}</td>
+        <td class="num">${fmtGoldHtml(x.target_sell)}</td>
+        <td class="num" style="color:var(--green)">${fmtGoldHtml(x.net_profit)}</td>
+        <td class="num">${x.net_roi_pct.toFixed(1)}%</td>
+        <td class="num">${x.flip_rate_pct.toFixed(0)}%</td>
+        <td>${esc(x.best_buy_window)}</td>
+        <td>${esc(x.best_sell_window)}</td>
+      </tr>`;
+  }).join('');
+
+  renderDetail(list.find(x => x.item_id === SELECTED_ID));
+}
+
+function selectItem(id) {
+  SELECTED_ID = id;
+  render();
+}
+
+function buildChartSvg(item) {
+  const h = item.history || [];
+  if (h.length < 2) {
+    return '<div class="sub" style="padding:18px;text-align:center">Preisverlauf erscheint ab 2 Snapshots.</div>';
+  }
+  const w = 440, ht = 150, pad = 16;
+  const allVals = h.flatMap(p => [p[1], p[2]]).concat([item.buy_now, item.target_sell]);
+  const minV = Math.min(...allVals) * 0.95;
+  const maxV = Math.max(...allVals) * 1.05 || 1;
+  const sx = i => pad + (i / (h.length - 1)) * (w - 2 * pad);
+  const sy = v => ht - pad - ((v - minV) / (maxV - minV)) * (ht - 2 * pad);
+
+  const medPts = h.map((p, i) => `${sx(i).toFixed(1)},${sy(p[2]).toFixed(1)}`).join(' ');
+  const minPts = h.map((p, i) => `${sx(i).toFixed(1)},${sy(p[1]).toFixed(1)}`).join(' ');
+  const yBuy = sy(item.buy_now).toFixed(1);
+  const ySell = sy(item.target_sell).toFixed(1);
+
+  return `
+    <svg viewBox="0 0 ${w} ${ht}" style="width:100%;height:auto;display:block">
+      <line x1="${pad}" y1="${ySell}" x2="${w-pad}" y2="${ySell}" stroke="#f5b942" stroke-dasharray="4 4" stroke-width="1.2"/>
+      <line x1="${pad}" y1="${yBuy}" x2="${w-pad}" y2="${yBuy}" stroke="#22c55e" stroke-dasharray="4 4" stroke-width="1.2"/>
+      <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${medPts}"/>
+      <polyline fill="none" stroke="#94a3b8" stroke-width="1.2" opacity="0.7" points="${minPts}"/>
+      <text x="${pad+4}" y="${Math.max(12, ySell-4)}" fill="#f5b942" font-size="10">Ziel-VK: ${fmtGoldPlain(item.target_sell)}</text>
+      <text x="${pad+4}" y="${Math.min(ht-4, Number(yBuy)+11)}" fill="#22c55e" font-size="10">Kauf: ${fmtGoldPlain(item.buy_now)}</text>
+    </svg>`;
+}
+
+function buildHeatmap(hm) {
+  const vals = Object.values(hm || {});
+  if (!vals.length) return '<div class="sub">Noch keine Zeitfenster-Daten vorhanden.</div>';
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  const days = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+  const blocks = [0,4,8,12,16,20];
+  let html = '<div class="hm"><div></div>' + blocks.map(b => `<div class="hm-head">${b}-${b+4}h</div>`).join('');
+  days.forEach((d, wd) => {
+    html += `<div class="hm-head" style="text-align:left;padding-top:5px">${d}</div>`;
+    blocks.forEach(b => {
+      const v = hm[`${wd}_${b}`];
+      if (v === undefined) {
+        html += '<div class="hm-cell" style="color:var(--muted)">-</div>';
+      } else {
+        const ratio = maxV === minV ? 0.5 : (v - minV) / (maxV - minV);
+        const bg = ratio < 0.35
+          ? `rgba(34,197,94,${0.35 - ratio * 0.5})`
+          : ratio > 0.65
+          ? `rgba(245,185,66,${0.12 + (ratio - 0.65) * 0.9})`
+          : 'rgba(148,163,184,0.08)';
+        html += `<div class="hm-cell" style="background:${bg}" title="${d} ${b}-${b+4}h: ${fmtGoldPlain(v)}">${(v/10000).toFixed(1)}g</div>`;
+      }
+    });
+  });
+  return html + '</div>';
+}
+
+function copyText(txt, btn) {
+  navigator.clipboard.writeText(txt);
+  const old = btn.textContent;
+  btn.textContent = 'Kopiert!';
+  setTimeout(() => btn.textContent = old, 1200);
+}
+
+function renderDetail(item) {
+  const el = document.getElementById('detailPanel');
+  if (!item) return;
+  const totalInv = item.buy_now * item.rec_qty;
+  const totalNet = item.net_profit * item.rec_qty;
+  el.innerHTML = `
+    <h2 class="q-${esc(item.quality)}">${esc(item.name)}</h2>
+    <div class="sub">Item-ID #${item.item_id} | Bestand im AH: ${item.cur_qty} | Gesch. Verkäufe/Tag: ${item.daily_sold_est}</div>
+
+    <div class="action-box">
+      <div class="action-row"><span>Empfohlene Kaufmenge:</span><strong>${item.rec_qty} Stk</strong></div>
+      <div class="action-row"><span>Max. Einkaufspreis / Stk:</span><span>${fmtGoldHtml(item.buy_now)}</span></div>
+      <div class="action-row"><span>Ziel-Verkaufspreis / Stk:</span><span>${fmtGoldHtml(item.target_sell)}</span></div>
+      <div class="action-row"><span>Gesch. Relist-Deposit / Stk:</span><span>${fmtGoldHtml(item.est_deposit)}</span></div>
+      <div class="action-row" style="border-top:1px solid var(--border);padding-top:6px;margin-top:6px">
+        <span>Gesamt-Invest -> Netto-Gewinn:</span>
+        <span>${fmtGoldHtml(totalInv)} -> <strong style="color:var(--green)">+${fmtGoldHtml(totalNet)}</strong></span>
+      </div>
+      <div class="action-row"><span>Bestes Kauf- / VK-Fenster:</span><span>${esc(item.best_buy_window)} / ${esc(item.best_sell_window)}</span></div>
+    </div>
+
+    <div class="sec-title">Preisverlauf (Blau: Median | Grau: Min)</div>
+    <div class="chart-box">${buildChartSvg(item)}</div>
+
+    <div class="sec-title">Timing-Heatmap (Grün = günstig kaufen | Gold = teuer verkaufen)</div>
+    ${buildHeatmap(item.heatmap)}
+
+    <div class="tools">
+      <button class="btn" onclick="copyText('${esc(item.name).replace(/'/g, "\\'")}', this)">Name für Auctionator kopieren</button>
+      <a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.wowhead.com/classic/de/item=${item.item_id}">Wowhead öffnen</a>
+    </div>
+  `;
+}
+
+loadData();
+</script>
+</body>
+</html>
