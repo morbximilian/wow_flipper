@@ -87,7 +87,6 @@ def init_db(conn: sqlite3.Connection) -> None:
         """
     )
 
-    # Sichere Migration fuer bestehende Datenbanken (alte Scans bleiben erhalten)
     ensure_column(conn, "snapshots", "sales_version", "INTEGER DEFAULT 1")
     ensure_column(conn, "snapshots", "delta_sec", "INTEGER DEFAULT 0")
     ensure_column(conn, "snapshots", "sales_gap_ok", "INTEGER DEFAULT 1")
@@ -233,7 +232,7 @@ def fetch_missing_item_meta(conn: sqlite3.Connection, token: str, item_ids: list
         f"static-{REGION}",
     )
 
-    for iid in missing[:65]:
+    for iid in missing[:80]:
         existing = cur.execute(
             "SELECT name, sell_price, quality, item_class, icon_url FROM item_meta WHERE item_id = ?",
             (iid,),
@@ -333,12 +332,10 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
         ):
             per_item_suffix[item_id] = 1
 
-    # Duplikat-Schutz bei unveraendertem Blizzard-Dump
     if prev_map and curr_map == prev_map and prev_snap:
         print("[SYNC SKIP] Blizzard-Daten seit letztem Scan unveraendert.")
         return prev_snap[0]
 
-    # Preisstatistiken vorab berechnen, damit die Verkaufsschaetzung ueberteuerte Abbrueche filtert
     item_summary = {}
     curr_price_cap = {}
     for item_id, prices in per_item_prices.items():
@@ -352,10 +349,6 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
         item_summary[item_id] = (min_u, p10_u, p25_u, med_u, bottom_qty)
         curr_price_cap[item_id] = int(max(p25_u, p10_u) * 1.15)
 
-    # Saubere Verkaufszaehlung (v2):
-    # 1) Geschrumpfte Stacks = sicherer Teilverkauf (auch nach Luecken)
-    # 2) Verschwundene Auktionen = nur wenn Scan-Luecke <= 2h, Restlaufzeit LONG/VERY_LONG
-    #    und Stueckpreis plausibel nahe am Marktpreis (<= P25 * 1.15)
     est_sold = defaultdict(int)
     for aid, (item_id, prev_price, prev_qty, prev_tl) in prev_map.items():
         if aid in curr_map:
@@ -440,7 +433,77 @@ def sat(val: float, k: float) -> float:
     return val / (val + k)
 
 
-def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None:
+def select_diversified_pool(candidates: list, max_total: int = 240) -> list:
+    if len(candidates) <= max_total:
+        return sorted(candidates, key=lambda x: x["score"], reverse=True)
+
+    selected = {}
+
+    def add_top(items: list, limit: int) -> None:
+        added = 0
+        for it in items:
+            iid = it["item_id"]
+            if iid not in selected:
+                selected[iid] = it
+                added += 1
+                if added >= limit or len(selected) >= max_total:
+                    break
+
+    # 1) Ausgewogener Standard-Score
+    add_top(sorted(candidates, key=lambda x: x["score"], reverse=True), 80)
+
+    # 2) Kleines Budget / Low-Income Flips (Einkauf <= 5g, Fokus auf ROI, Umschlag & Rabatt)
+    low_budget = [
+        c for c in candidates if c["buy_now"] <= 50000 and "SUFFIX_GEAR" not in c["flags"]
+    ]
+    low_budget.sort(
+        key=lambda c: (
+            35.0 * sat(c["net_roi_pct"], 20.0)
+            + 30.0 * sat(c["flip_rate_pct"] / 100.0, 0.20)
+            + 20.0 * sat(max(0.0, ((c["fair_value"] - c["buy_now"]) / max(1, c["fair_value"])) * 100.0), 15.0)
+            + 10.0 * sat(c["daily_sold_est"], 12.0)
+            + 5.0 * sat((c["net_profit"] * c["rec_qty"]) / 10000.0, 0.5)
+        ),
+        reverse=True,
+    )
+    add_top(low_budget, 60)
+
+    # 3) Hoher Umschlag / Schnelle Flips & Verbrauchbares
+    fast_movers = [
+        c for c in candidates if "SUFFIX_GEAR" not in c["flags"]
+    ]
+    fast_movers.sort(
+        key=lambda c: (
+            40.0 * sat(c["flip_rate_pct"] / 100.0, 0.20)
+            + 30.0 * sat(c["daily_sold_est"], 15.0)
+            + 20.0 * sat(c["net_roi_pct"], 15.0)
+            + 10.0 * sat((c["net_profit"] * c["rec_qty"]) / 10000.0, 2.0)
+        ),
+        reverse=True,
+    )
+    add_top(fast_movers, 50)
+
+    # 4) Große Margen / Maximaler Gesamtgewinn pro Flip
+    high_profit = sorted(
+        [c for c in candidates if "SUFFIX_GEAR" not in c["flags"]],
+        key=lambda c: c["net_profit"] * c["rec_qty"],
+        reverse=True,
+    )
+    add_top(high_profit, 50)
+
+    # Verbleibende Plaetze mit bestem Standard-Score auffuellen
+    if len(selected) < max_total:
+        add_top(
+            sorted(candidates, key=lambda x: x["score"], reverse=True),
+            max_total - len(selected),
+        )
+
+    result = list(selected.values())
+    result.sort(key=lambda x: x["score"], reverse=True)
+    return result
+
+
+def build_export(conn: sqlite3.Connection, token: str, max_total: int = 240) -> None:
     cur = conn.cursor()
     latest_row = cur.execute(
         "SELECT id, ts_utc, total_listings FROM snapshots ORDER BY ts_utc DESC LIMIT 1"
@@ -470,7 +533,6 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
     cutoff_72h = latest_ts - (72 * 3600)
     snaps_in_48h = sum(1 for s in snaps if s[1] >= cutoff_48h)
 
-    # Zeitbasis fuer saubere v2-Verkaufszaehlung vs. aeltere v1-Scans (sanfter Uebergang)
     v2_valid_ids = {s[0] for s in snaps if s[5] >= 2 and s[6] == 1 and s[7] > 0}
     v2_hours = sum(s[7] for s in snaps if s[0] in v2_valid_ids) / 3600.0
     v1_snaps = [s for s in snaps if s[5] < 2]
@@ -533,7 +595,6 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         if not h:
             continue
 
-        # Zeitlich sortierte Historie des Items
         h.sort(key=lambda r: snap_meta[r[0]][0])
 
         flags = []
@@ -553,7 +614,6 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         )
         clean_icon = "" if icon_url == "NONE" else icon_url
 
-        # 72h-Verlauf strikt nach echtem Zeitstempel
         h_72h = [r for r in h if snap_meta[r[0]][0] >= cutoff_72h]
         history_export = [
             [snap_meta[r[0]][0], r[2], calc_ref_price(r[3], r[4], r[7]), r[5], r[6]]
@@ -570,7 +630,7 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
             if net_profit <= 0:
                 continue
             net_roi = (net_profit / buy_price) * 100.0
-            if net_roi < 10.0:
+            if net_roi < 8.0:
                 continue
             rec_qty = max(1, min(10, cur_qty // 4))
             if not is_bait and cur_bottom_qty > 0:
@@ -619,12 +679,10 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         if fair_value <= 0:
             continue
 
-        # 1) Tagesabsatz mit Vorrang fuer saubere v2-Verkaufszaehlung
         sold_v2 = sum(r[8] for r in h if r[0] in v2_valid_ids)
         sold_v1 = sum(r[8] for r in h if r[0] in v1_valid_ids)
 
         daily_v2 = (sold_v2 / v2_hours) * 24.0 if v2_hours >= 0.5 else None
-        # Alte v1-Werte (inkl. MEDIUM-Ablaeufe) auf 35% daempfen, nur fuer die ersten 6h nach Update
         daily_v1_damp = ((sold_v1 / v1_hours) * 24.0 * 0.35) if v1_hours >= 1.0 else None
 
         if daily_v2 is not None and (v2_hours >= 6.0 or daily_v1_damp is None):
@@ -645,7 +703,6 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         if daily_sold < 5.0:
             flags.append("LOW_LIQ")
 
-        # 2) 48h-Trendpruefung auf echter Zeitstempel-Basis (erst aktiv ab >= 48h Datenbasis)
         refs_recent_48h = [
             calc_ref_price(r[3], r[4], r[7])
             for r in h
@@ -669,7 +726,6 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
                 flags.append("DOWNTREND")
                 fair_value = min(fair_value, med_recent_48h)
 
-        # 3) Zeitfenster-Matrix auf Basis des realistischen Referenzpreises (P10/P25)
         slot_prices = defaultdict(list)
         for r in h:
             _, wd, hr, *_ = snap_meta[r[0]]
@@ -682,7 +738,6 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
 
         target_sell = int(min(fair_value * 1.05, slot_medians[best_sell_key]))
 
-        # 4) 72h-Rebound-Test: schuetzt vor Einzel-Ausreissern und abgestuerzten Kursen
         refs_72h_sorted = sorted(calc_ref_price(r[3], r[4], r[7]) for r in h_72h)
         if len(refs_72h_sorted) >= 4:
             cap_p85_72h = percentile_sorted(refs_72h_sorted, 0.85)
@@ -713,7 +768,6 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         if target_sell <= buy_price:
             continue
 
-        # 5) Reale Gebuehren inkl. Mindest-Relist-Risiko (0.25 Relists gegen 0c-Illusion)
         expected_relists = min(5.0, max(0.25, (1.0 / max(daily_turnover, 0.05)) - 1.0))
         est_deposit = int(vendor_price * 0.30 * expected_relists)
         net_profit = int(target_sell * (1.0 - AH_CUT) - buy_price - est_deposit)
@@ -726,23 +780,23 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         net_roi = (net_profit / buy_price) * 100.0
         discount_pct = ((fair_value - buy_price) / fair_value) * 100.0
 
-        if net_roi < 10.0 or daily_sold < 1.5:
+        # Harte Untergrenze bei 8% Netto-ROI fuer liquide Verbrauchsgueter
+        if net_roi < 8.0 or daily_sold < 1.5:
             continue
 
         rec_qty = max(1, int(min(cur_qty * 0.25, max(1.0, daily_sold * 0.35))))
         if not is_bait and cur_bottom_qty > 0:
             rec_qty = min(rec_qty, cur_bottom_qty)
 
-        # 6) Weiche Saettigungskurve + Gewichtung des absoluten Goldgewinns
         total_profit_g = (net_profit * rec_qty) / 10000.0
         pos_discount = max(0.0, discount_pct)
 
         raw_score = (
-            30.0 * sat(total_profit_g, 5.0)     # Halbwert bei 5g Gesamtgewinn pro Flip
-            + 25.0 * sat(daily_turnover, 0.20)  # Halbwert bei 20% taegl. Flip-Rate
-            + 20.0 * sat(net_roi, 20.0)         # Halbwert bei 20% Netto-ROI
-            + 15.0 * sat(pos_discount, 15.0)    # Halbwert bei 15% Rabatt zum Fair Value
-            + 10.0 * sat(daily_sold, 12.0)      # Halbwert bei 12 Verkaeufen/Tag
+            30.0 * sat(total_profit_g, 5.0)
+            + 25.0 * sat(daily_turnover, 0.20)
+            + 20.0 * sat(net_roi, 20.0)
+            + 15.0 * sat(pos_discount, 15.0)
+            + 10.0 * sat(daily_sold, 12.0)
         )
 
         penalty = 0.0
@@ -791,8 +845,7 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
             }
         )
 
-    candidates.sort(key=lambda x: x["score"], reverse=True)
-    top = candidates[:top_n]
+    top = select_diversified_pool(candidates, max_total=max_total)
 
     fetch_missing_item_meta(conn, token, [c["item_id"] for c in top])
     for c in top:
@@ -820,7 +873,7 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
 
     with open(EXPORT_JSON_PATH, "w", encoding="utf-8") as f:
         json.dump(export_payload, f, ensure_ascii=False, separators=(",", ":"))
-    print(f"[EXPORT OK] {len(top)} Empfehlungen nach {EXPORT_JSON_PATH} geschrieben (v2_hours={v2_hours:.1f}).")
+    print(f"[EXPORT OK] {len(top)} Empfehlungen (aus {len(candidates)} Kandidaten) geschrieben (v2_hours={v2_hours:.1f}).")
 
 
 def main() -> None:
