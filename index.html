@@ -15,75 +15,99 @@
     margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     background: var(--bg); color: var(--text); line-height: 1.45;
   }
-  .wrap { max-width: 1440px; margin: 0 auto; padding: 20px; }
+  .wrap { max-width: 1520px; margin: 0 auto; padding: 18px 20px 36px; }
   header {
     display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between;
-    align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--border);
   }
   h1 { margin: 0; font-size: 1.35rem; color: var(--gold); letter-spacing: 0.3px; }
-  .sub { font-size: 0.85rem; color: var(--muted); margin-top: 3px; }
+  .sub { font-size: 0.84rem; color: var(--muted); margin-top: 3px; }
   .btn {
     background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
-    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;
+    padding: 8px 13px; border-radius: 8px; cursor: pointer; font-size: 0.84rem;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
   }
   .btn:hover { border-color: var(--gold); color: var(--gold); }
   .banner {
-    margin-top: 14px; padding: 12px 16px; border-radius: 10px;
+    margin-top: 14px; padding: 11px 15px; border-radius: 10px;
     background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4);
-    color: #fde68a; font-size: 0.88rem; display: none;
+    color: #fde68a; font-size: 0.86rem; display: none;
   }
   .kpis {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: 12px; margin: 16px 0;
+    gap: 12px; margin: 14px 0;
   }
   .kpi {
     background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-    padding: 12px 14px;
+    padding: 11px 14px;
   }
-  .kpi .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
-  .kpi .val { font-size: 1.25rem; font-weight: 700; margin-top: 4px; }
+  .kpi .lbl { font-size: 0.73rem; color: var(--muted); text-transform: uppercase; }
+  .kpi .val { font-size: 1.2rem; font-weight: 700; margin-top: 4px; }
+
   .filters {
     display: flex; flex-wrap: wrap; gap: 10px; align-items: end;
     background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-    padding: 12px 14px; margin-bottom: 16px;
+    padding: 12px 14px; margin-bottom: 14px;
   }
   .fgroup { display: flex; flex-direction: column; gap: 4px; }
-  .fgroup label { font-size: 0.74rem; color: var(--muted); }
+  .fgroup label { font-size: 0.72rem; color: var(--muted); }
   .fgroup input, .fgroup select {
     background: var(--bg); color: var(--text); border: 1px solid var(--border);
-    padding: 7px 10px; border-radius: 6px; font-size: 0.85rem;
+    padding: 7px 10px; border-radius: 6px; font-size: 0.84rem;
   }
-  .fcheck { display: flex; align-items: center; gap: 6px; padding: 7px 4px; font-size: 0.85rem; }
-  .grid { display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; align-items: start; }
-  @media (max-width: 1080px) { .grid { grid-template-columns: 1fr; } }
+  .fcheck { display: flex; align-items: center; gap: 6px; padding: 7px 4px; font-size: 0.84rem; cursor: pointer; }
+
   .card {
     background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
     overflow: hidden;
   }
-  .table-wrap { overflow-x: auto; max-height: 74vh; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  th { position: sticky; top: 0; background: var(--panel-2); color: var(--muted); font-size: 0.74rem; text-transform: uppercase; z-index: 2; }
-  tbody tr { cursor: pointer; transition: background 0.12s; }
-  tbody tr:hover { background: rgba(245, 185, 66, 0.07); }
-  tbody tr.active { background: rgba(245, 185, 66, 0.14); }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .badge {
-    display: inline-block; padding: 2px 7px; border-radius: 999px; font-weight: 700; font-size: 0.76rem;
+  .list-card { margin-bottom: 18px; }
+  .list-bar {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 9px 14px; background: var(--panel-2); border-bottom: 1px solid var(--border);
+    font-size: 0.78rem; color: var(--muted); flex-wrap: wrap;
   }
+  .table-wrap { max-height: 48vh; min-height: 220px; overflow-y: auto; overflow-x: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; table-layout: auto; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th {
+    position: sticky; top: 0; background: var(--panel-2); color: var(--muted);
+    font-size: 0.72rem; text-transform: uppercase; z-index: 2; white-space: nowrap;
+  }
+  tbody tr { cursor: pointer; transition: background 0.12s; }
+  tbody tr:hover { background: rgba(245, 185, 66, 0.06); }
+  tbody tr.active { background: rgba(245, 185, 66, 0.13); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .subval { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+  .win-cell { font-size: 0.78rem; white-space: nowrap; line-height: 1.35; }
+  .win-k { color: var(--green); }
+  .win-v { color: var(--gold); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;
+    border-radius: 999px; font-weight: 700; font-size: 0.78rem; border: 1px solid transparent;
+    cursor: pointer; transition: transform 0.12s, border-color 0.12s, filter 0.12s;
+  }
+  .badge:hover { transform: scale(1.06); filter: brightness(1.15); border-color: currentColor; }
+  .badge-info { font-size: 0.68rem; opacity: 0.75; font-weight: 600; }
   .b-high { background: rgba(34, 197, 94, 0.18); color: var(--green); }
   .b-mid { background: rgba(245, 158, 11, 0.18); color: var(--amber); }
   .b-low { background: rgba(239, 68, 68, 0.18); color: var(--red); }
+
   .flag {
-    display: inline-block; font-size: 0.68rem; padding: 1px 5px; border-radius: 4px;
+    display: inline-block; font-size: 0.66rem; padding: 1px 5px; border-radius: 4px;
     background: rgba(239, 68, 68, 0.2); color: #fca5a5; margin-left: 5px; vertical-align: middle;
   }
-  .item-cell { display: inline-flex; align-items: center; gap: 8px; }
+  .flag-neutral { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
+  .item-cell { display: flex; align-items: center; gap: 9px; min-width: 180px; }
+  .item-name-wrap { display: flex; flex-direction: column; min-width: 0; }
+  .item-name-line { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-weight: 500; }
+  .item-cat { font-size: 0.72rem; color: var(--muted); }
   .item-icon {
-    width: 26px; height: 26px; border-radius: 5px; object-fit: cover;
+    width: 28px; height: 28px; border-radius: 5px; object-fit: cover;
     background: #0c0f14; flex-shrink: 0; border: 1.5px solid #475569;
   }
-  .item-icon-lg { width: 38px; height: 38px; border-radius: 7px; }
+  .item-icon-lg { width: 42px; height: 42px; border-radius: 8px; }
   .item-icon-fallback {
     display: inline-flex; align-items: center; justify-content: center;
     font-size: 0.75rem; font-weight: 700; color: var(--muted);
@@ -91,45 +115,152 @@
   .qb-POOR { border-color: #9d9d9d; } .qb-COMMON { border-color: #cbd5e1; }
   .qb-UNCOMMON { border-color: #1eff00; } .qb-RARE { border-color: #0070dd; }
   .qb-EPIC { border-color: #a335ee; } .qb-LEGENDARY { border-color: #ff8000; }
-  .detail { padding: 16px; position: sticky; top: 16px; }
-  .detail-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-  .detail h2 { margin: 0; font-size: 1.12rem; }
-  .action-box {
-    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 12px; margin: 12px 0; font-size: 0.87rem;
+
+  /* Vollbreiter Detailbereich unterhalb der Tabelle */
+  .detail-wrap { padding: 18px; }
+  .detail-top {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+    gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 16px;
   }
-  .action-row { display: flex; justify-content: space-between; gap: 10px; margin: 5px 0; }
-  .sec-title { font-size: 0.76rem; color: var(--muted); text-transform: uppercase; margin: 14px 0 6px; }
+  .detail-head { display: flex; align-items: center; gap: 12px; }
+  .detail-head h2 { margin: 0; font-size: 1.2rem; }
+  .detail-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .detail-grid {
+    display: grid; grid-template-columns: 1fr 1.35fr 1.1fr; gap: 16px; align-items: start;
+  }
+  .detail-box {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px;
+  }
+  .sec-title {
+    font-size: 0.75rem; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.4px; margin: 0 0 10px 0; font-weight: 600;
+  }
+  .action-row { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0; font-size: 0.87rem; }
+  .action-row.sep { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+
   .chart-box {
     position: relative; background: var(--bg); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px; user-select: none;
+    border-radius: 8px; padding: 10px; user-select: none;
   }
   .chart-legend {
     display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.72rem;
-    color: var(--muted); margin-bottom: 4px;
+    color: var(--muted); margin-bottom: 6px;
   }
   .leg-dot {
     display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px;
     vertical-align: middle;
   }
   .chart-tooltip {
-    position: absolute; top: 30px; pointer-events: none; display: none;
+    position: absolute; top: 34px; pointer-events: none; display: none;
     background: rgba(15, 20, 30, 0.96); border: 1px solid var(--border);
-    border-radius: 8px; padding: 8px 10px; font-size: 0.76rem; min-width: 175px;
+    border-radius: 8px; padding: 8px 10px; font-size: 0.76rem; min-width: 180px;
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55); z-index: 10;
   }
   .ct-time { font-weight: 700; color: var(--gold); margin-bottom: 4px; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
   .ct-row { display: flex; justify-content: space-between; gap: 12px; margin: 2px 0; }
-  .hm { display: grid; grid-template-columns: 34px repeat(6, 1fr); gap: 3px; font-size: 0.7rem; }
+
+  .hm { display: grid; grid-template-columns: 32px repeat(6, 1fr); gap: 3px; font-size: 0.72rem; }
   .hm-cell {
-    padding: 5px 2px; text-align: center; border-radius: 4px; background: var(--bg);
-    color: var(--text); border: 1px solid rgba(255,255,255,0.04);
+    padding: 6px 2px; text-align: center; border-radius: 4px; background: var(--bg);
+    color: var(--text); border: 1px solid rgba(255,255,255,0.04); font-variant-numeric: tabular-nums;
   }
-  .hm-head { color: var(--muted); text-align: center; padding: 2px; font-size: 0.68rem; }
-  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .hm-head { color: var(--muted); text-align: center; padding: 3px 1px; font-size: 0.68rem; }
+
+  /* Score-Berechnungs-Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(4, 7, 12, 0.78);
+    backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center;
+    padding: 16px; z-index: 100;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.7);
+  }
+  .modal-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 16px 18px; border-bottom: 1px solid var(--border); background: var(--panel-2);
+    position: sticky; top: 0; z-index: 2;
+  }
+  .modal-head h3 { margin: 0; font-size: 1.05rem; }
+  .modal-close {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+    width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1.1rem;
+    line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); border-color: var(--gold); }
+  .modal-body { padding: 16px 18px 20px; font-size: 0.86rem; }
+  .m-note {
+    background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #bae6fd; padding: 9px 12px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 14px;
+  }
+  .m-warn {
+    background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fde68a; padding: 9px 12px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 14px;
+  }
+  .factor-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .factor {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px;
+    padding: 10px 12px;
+  }
+  .factor-top { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; }
+  .factor-pts { color: var(--green); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .factor-bar {
+    height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; margin: 6px 0;
+  }
+  .factor-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); border-radius: 999px; }
+  .factor-math { font-size: 0.77rem; color: var(--muted); }
+  .pen-row {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    padding: 8px 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.28);
+    border-radius: 8px; margin-bottom: 7px; font-size: 0.82rem;
+  }
+  .pen-row.neutral {
+    background: rgba(56, 189, 248, 0.08); border-color: rgba(56, 189, 248, 0.25);
+  }
+  .m-summary {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-top: 14px;
+  }
+  .m-sum-row { display: flex; justify-content: space-between; margin: 4px 0; }
+  .m-sum-total {
+    border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px;
+    font-size: 1rem; font-weight: 700;
+  }
+
   .q-POOR { color: #9d9d9d; } .q-COMMON { color: #ffffff; } .q-UNCOMMON { color: #1eff00; }
   .q-RARE { color: #0070dd; } .q-EPIC { color: #a335ee; } .q-LEGENDARY { color: #ff8000; }
   .g { color: #ffd700; } .s { color: #c7c7cf; } .c { color: #eda55f; }
+
+  @media (max-width: 1180px) {
+    .detail-grid { grid-template-columns: 1fr 1fr; }
+    .detail-box.box-chart { grid-column: 1 / -1; }
+  }
+  @media (max-width: 900px) {
+    .wrap { padding: 12px 12px 28px; }
+    .table-wrap { max-height: 55vh; }
+    thead { display: none; }
+    table, tbody { display: block; width: 100%; }
+    tbody tr {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px 10px; padding: 12px; border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      display: block; padding: 0; border: none; text-align: left !important; white-space: normal;
+    }
+    td.col-score { grid-column: span 1; align-self: center; }
+    td.col-item { grid-column: span 5; align-self: center; }
+    .item-cell { min-width: 0; }
+    td.col-metric { grid-column: span 2; }
+    td.col-metric::before {
+      content: attr(data-label); display: block; font-size: 0.65rem;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 2px;
+    }
+    .detail-grid { grid-template-columns: 1fr; }
+    .detail-box.box-chart { grid-column: auto; }
+  }
 </style>
 </head>
 <body>
@@ -166,24 +297,25 @@
     </div>
     <div class="fgroup">
       <label>Min. Score</label>
-      <input type="number" id="fScore" value="25" min="0" max="100" style="width:82px" oninput="render()" />
+      <input type="number" id="fScore" value="25" min="0" max="100" style="width:80px" oninput="render()" />
     </div>
     <div class="fgroup">
       <label>Min. Gewinn (Gold)</label>
-      <input type="number" id="fMinProfit" placeholder="0" min="0" step="0.5" style="width:98px" oninput="render()" />
+      <input type="number" id="fMinProfit" placeholder="0" min="0" step="0.5" style="width:96px" oninput="render()" />
     </div>
     <div class="fgroup">
       <label>Min. Flip-Rate %/Tag</label>
-      <input type="number" id="fFlip" value="0" min="0" max="100" style="width:100px" oninput="render()" />
+      <input type="number" id="fFlip" value="0" min="0" max="100" style="width:98px" oninput="render()" />
     </div>
     <div class="fgroup">
       <label>Max. Einkauf (Gold)</label>
-      <input type="number" id="fMaxGold" placeholder="alle" min="0" style="width:98px" oninput="render()" />
+      <input type="number" id="fMaxGold" placeholder="alle" min="0" style="width:96px" oninput="render()" />
     </div>
     <div class="fgroup">
       <label>Sortierung</label>
       <select id="fSort" onchange="render()">
         <option value="score">Flip-Score (hoch -> niedrig)</option>
+        <option value="total_profit">Gesamtgewinn pro Flip</option>
         <option value="net_profit">Netto-Gewinn / Stk</option>
         <option value="net_roi_pct">Netto-ROI %</option>
         <option value="flip_rate_pct">Flip-Rate %/Tag</option>
@@ -196,31 +328,45 @@
     </label>
   </div>
 
-  <div class="grid">
-    <div class="card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Score</th>
-              <th>Item</th>
-              <th class="num">Kauf jetzt</th>
-              <th class="num">Ziel-VK</th>
-              <th class="num">Netto/Stk</th>
-              <th class="num">ROI</th>
-              <th class="num">Flip/Tag</th>
-              <th>Kauf-Fenster</th>
-              <th>VK-Fenster</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
+  <!-- Vollbreite Item-Liste -->
+  <div class="card list-card">
+    <div class="list-bar">
+      <span>Klicke auf eine Zeile für Details darunter. Klicke auf den <strong>Score</strong> für die exakte Berechnungslogik.</span>
+      <a href="#detailSection" style="color:var(--gold);text-decoration:none;font-weight:600">Zu den Item-Details ↓</a>
     </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Score</th>
+            <th>Item</th>
+            <th class="num">Kauf jetzt</th>
+            <th class="num">Ziel-VK</th>
+            <th class="num">Netto / Stk (Gesamt)</th>
+            <th class="num">ROI</th>
+            <th class="num">Flip / Tag</th>
+            <th>Kauf- / VK-Fenster</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
 
-    <div class="card detail" id="detailPanel">
-      <div class="sub">Wähle links ein Item für Preisverlauf, Zeitfenster-Heatmap und Kaufplan.</div>
+  <!-- Sauber darunter: Vollbreiter Detailbereich -->
+  <div class="card detail-wrap" id="detailSection">
+    <div class="sub">Wähle oben ein Item für Item-Daten, interaktiven Preisverlauf und Timing-Heatmap.</div>
+  </div>
+</div>
+
+<!-- Score-Berechnungs-Modal -->
+<div class="modal-backdrop" id="scoreModalBackdrop" onclick="closeScoreModal(event)">
+  <div class="modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="scoreModalTitle">Score-Berechnung</h3>
+      <button class="modal-close" onclick="closeScoreModal()" aria-label="Schließen">&times;</button>
     </div>
+    <div class="modal-body" id="scoreModalBody"></div>
   </div>
 </div>
 
@@ -228,8 +374,22 @@
 let DATA = null;
 let SELECTED_ID = null;
 
+const FLAG_INFO = {
+  SELL_WALL: { pts: -12, desc: 'Aktueller Bestand ist mehr als doppelt so hoch wie der Schnitt (bei mindestens 20 Stück).' },
+  HIGH_DEPOSIT: { pts: -15, desc: 'Geschätzte Relist-Gebühren fressen mehr als 40 % des Netto-Gewinns.' },
+  LOW_LIQ: { pts: -10, desc: 'Weniger als 5 geschätzte Verkäufe pro Tag.' },
+  DOWNTREND: { pts: -18, desc: '48h-Median liegt mehr als 15 % unter der älteren Historie (Fair Value und Ziel-VK wurden gekappt).' },
+  NO_REBOUND: { pts: -12, desc: 'Zielpreis wurde in den letzten 72h nicht in mind. 2 getrennten 4h-Blöcken (bzw. in 48h) erreicht.' },
+  SUFFIX_GEAR: { pts: -25, desc: 'Ausrüstung mit Zufalls-Suffixen oder Bonus-IDs (Preise verschiedener Varianten vermischt).' },
+  BAIT: { pts: 0, desc: 'Lockangebot >35 % unter P10 erkannt. Einkaufspreis wurde automatisch auf P10 angehoben (kein Punktabzug).' }
+};
+
 function esc(str) {
   return String(str ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function fmtNum(n, dec = 1) {
+  return Number(n).toFixed(dec).replace('.', ',');
 }
 
 function fmtGoldHtml(copper) {
@@ -262,12 +422,28 @@ function fmtShortDate(ts) {
   return `${dd}.${mm}. ${hh}:${mi}`;
 }
 
+window.imgFallback = function(el) {
+  const span = document.createElement('span');
+  span.className = el.className + ' item-icon-fallback';
+  span.textContent = '?';
+  el.replaceWith(span);
+};
+
 function iconHtml(item, large = false) {
   const cls = `item-icon ${large ? 'item-icon-lg' : ''} qb-${esc(item.quality || 'COMMON')}`;
   if (item.icon_url) {
-    return `<img class="${cls}" src="${esc(item.icon_url)}" alt="" loading="lazy" onerror="this.outerHTML='<span class=&quot;${cls} item-icon-fallback&quot;>?</span>'" />`;
+    return `<img class="${cls}" src="${esc(item.icon_url)}" alt="" loading="lazy" onerror="imgFallback(this)" />`;
   }
   return `<span class="${cls} item-icon-fallback">?</span>`;
+}
+
+function scoreClass(score) {
+  return score >= 70 ? 'b-high' : score >= 45 ? 'b-mid' : 'b-low';
+}
+
+function sat(val, k) {
+  if (val <= 0) return 0;
+  return val / (val + k);
 }
 
 function populateCategories() {
@@ -328,7 +504,12 @@ function getFiltered() {
       x.buy_now <= maxCopper &&
       (!safeOnly || x.flags.length === 0)
     )
-    .sort((a, b) => b[sortKey] - a[sortKey]);
+    .sort((a, b) => {
+      if (sortKey === 'total_profit') {
+        return (b.net_profit * b.rec_qty) - (a.net_profit * a.rec_qty);
+      }
+      return b[sortKey] - a[sortKey];
+    });
 }
 
 function render() {
@@ -340,7 +521,7 @@ function render() {
 
   const tbody = document.getElementById('tbody');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:24px">Keine Items passen zu den aktuellen Filtern.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">Keine Items passen zu den aktuellen Filtern.</td></tr>';
     return;
   }
 
@@ -349,24 +530,45 @@ function render() {
   }
 
   tbody.innerHTML = list.map(x => {
-    const cls = x.score >= 70 ? 'b-high' : x.score >= 45 ? 'b-mid' : 'b-low';
-    const flagsHtml = x.flags.map(f => `<span class="flag">${esc(f)}</span>`).join('');
+    const cls = scoreClass(x.score);
+    const flagsHtml = x.flags.map(f =>
+      `<span class="flag ${f === 'BAIT' ? 'flag-neutral' : ''}">${esc(f)}</span>`
+    ).join('');
+    const totalProfit = x.net_profit * x.rec_qty;
     return `
       <tr class="${x.item_id === SELECTED_ID ? 'active' : ''}" onclick="selectItem(${x.item_id})">
-        <td><span class="badge ${cls}">${x.score.toFixed(0)}</span></td>
-        <td>
+        <td class="col-score">
+          <button type="button" class="badge ${cls}" title="Klicken für exakte Score-Berechnung"
+            onclick="openScoreModal(${x.item_id}, event)">
+            ${x.score.toFixed(0)} <span class="badge-info">?</span>
+          </button>
+        </td>
+        <td class="col-item">
           <div class="item-cell">
             ${iconHtml(x, false)}
-            <span><span class="q-${esc(x.quality)}">${esc(x.name)}</span>${flagsHtml}</span>
+            <div class="item-name-wrap">
+              <div class="item-name-line">
+                <span class="q-${esc(x.quality)}">${esc(x.name)}</span>${flagsHtml}
+              </div>
+              ${x.item_class ? `<span class="item-cat">${esc(x.item_class)}</span>` : ''}
+            </div>
           </div>
         </td>
-        <td class="num">${fmtGoldHtml(x.buy_now)}</td>
-        <td class="num">${fmtGoldHtml(x.target_sell)}</td>
-        <td class="num" style="color:var(--green)">${fmtGoldHtml(x.net_profit)}</td>
-        <td class="num">${x.net_roi_pct.toFixed(1)}%</td>
-        <td class="num">${x.flip_rate_pct.toFixed(0)}%</td>
-        <td>${esc(x.best_buy_window)}</td>
-        <td>${esc(x.best_sell_window)}</td>
+        <td class="num col-metric" data-label="Kauf jetzt">${fmtGoldHtml(x.buy_now)}</td>
+        <td class="num col-metric" data-label="Ziel-VK">${fmtGoldHtml(x.target_sell)}</td>
+        <td class="num col-metric" data-label="Netto / Stk" style="color:var(--green)">
+          ${fmtGoldHtml(x.net_profit)}
+          <span class="subval">×${x.rec_qty}: +${fmtGoldPlain(totalProfit)}</span>
+        </td>
+        <td class="num col-metric" data-label="ROI">${x.net_roi_pct.toFixed(1)}%</td>
+        <td class="num col-metric" data-label="Flip / Tag">
+          ${x.flip_rate_pct.toFixed(0)}%
+          <span class="subval">~${x.daily_sold_est}/Tag</span>
+        </td>
+        <td class="win-cell col-metric" data-label="Kauf / VK">
+          <span class="win-k">K: ${esc(x.best_buy_window)}</span><br />
+          <span class="win-v">V: ${esc(x.best_sell_window)}</span>
+        </td>
       </tr>`;
   }).join('');
 
@@ -377,6 +579,156 @@ function selectItem(id) {
   SELECTED_ID = id;
   render();
 }
+
+function openScoreModal(itemId, ev) {
+  if (ev) ev.stopPropagation();
+  const item = (DATA?.flips || []).find(x => x.item_id === itemId);
+  if (!item) return;
+
+  if (SELECTED_ID !== itemId) {
+    SELECTED_ID = itemId;
+    render();
+  }
+
+  const totalProfitCopper = item.net_profit * item.rec_qty;
+  const totalProfitG = totalProfitCopper / 10000;
+  const turnover = (item.flip_rate_pct || 0) / 100;
+  const roi = item.net_roi_pct || 0;
+  const discountPct = item.fair_value > 0 ? ((item.fair_value - item.buy_now) / item.fair_value) * 100 : 0;
+  const posDiscount = Math.max(0, discountPct);
+  const dailySold = item.daily_sold_est || 0;
+
+  const isCollecting = DATA?.status === 'collecting';
+
+  const factors = [
+    {
+      name: 'Gesamtgewinn pro Flip',
+      max: 30,
+      pts: 30 * sat(totalProfitG, 5.0),
+      valText: `${fmtGoldPlain(totalProfitCopper)} (${item.rec_qty} Stk × ${fmtGoldPlain(item.net_profit)})`,
+      math: `30 × ${fmtNum(totalProfitG, 2)} / (${fmtNum(totalProfitG, 2)} + 5,0) [Halbwert: 5g]`
+    },
+    {
+      name: 'Tägliche Flip-Rate (Umschlag)',
+      max: 25,
+      pts: 25 * sat(turnover, 0.20),
+      valText: `${fmtNum(item.flip_rate_pct, 1)} % pro Tag`,
+      math: `25 × ${fmtNum(turnover, 2)} / (${fmtNum(turnover, 2)} + 0,20) [Halbwert: 20 %]`
+    },
+    {
+      name: 'Netto-ROI',
+      max: 20,
+      pts: 20 * sat(roi, 20.0),
+      valText: `${fmtNum(roi, 1)} %`,
+      math: `20 × ${fmtNum(roi, 1)} / (${fmtNum(roi, 1)} + 20,0) [Halbwert: 20 %]`
+    },
+    {
+      name: `Rabatt zum Fair Value (${item.ref_label || 'P10/P25'})`,
+      max: 15,
+      pts: 15 * sat(posDiscount, 15.0),
+      valText: `${fmtNum(discountPct, 1)} % (${fmtGoldPlain(item.buy_now)} vs. ${fmtGoldPlain(item.fair_value)})`,
+      math: `15 × ${fmtNum(posDiscount, 1)} / (${fmtNum(posDiscount, 1)} + 15,0) [Halbwert: 15 %]`
+    },
+    {
+      name: 'Tagesvolumen (Liquidität)',
+      max: 10,
+      pts: 10 * sat(dailySold, 12.0),
+      valText: `~${fmtNum(dailySold, 1)} geschätzte Verkäufe / Tag`,
+      math: `10 × ${fmtNum(dailySold, 1)} / (${fmtNum(dailySold, 1)} + 12,0) [Halbwert: 12/Tag]`
+    }
+  ];
+
+  const rawScore = factors.reduce((s, f) => s + f.pts, 0);
+  const penalties = (item.flags || []).map(f => ({
+    code: f,
+    ...(FLAG_INFO[f] || { pts: 0, desc: 'Warn-Hinweis aktiv.' })
+  }));
+  const totalPenalty = penalties.reduce((s, p) => s + Math.abs(p.pts), 0);
+  const calcFinal = Math.max(1.0, Math.min(99.0, rawScore - totalPenalty));
+  const versionMismatch = !isCollecting && Math.abs(calcFinal - item.score) > 1.5;
+
+  const ahFee = Math.round(item.target_sell * 0.05);
+  const afterFee = Math.round(item.target_sell * 0.95);
+
+  document.getElementById('scoreModalTitle').innerHTML = `
+    <span class="q-${esc(item.quality)}">${esc(item.name)}</span>
+    <span style="color:var(--muted);font-weight:400"> | Score ${item.score.toFixed(1)}</span>
+  `;
+
+  let noticeHtml = '';
+  if (isCollecting) {
+    noticeHtml = '<div class="m-warn">Hinweis: Das System befindet sich noch im Startmodus (unter 2 unterschiedliche Scans). Sobald reale Verkaufsraten vorliegen, gilt exakt die unten gezeigte 5-Faktoren-Formel.</div>';
+  } else if (versionMismatch) {
+    noticeHtml = '<div class="m-warn">Hinweis: Die geladenen JSON-Daten stammen noch aus einem Lauf vor dem letzten Formel-Update. Nach dem nächsten stündlichen Sync stimmen gespeicherter Score und Einzelrechnung exakt überein.</div>';
+  }
+
+  const factorsHtml = factors.map(f => {
+    const pct = Math.min(100, Math.max(0, (f.pts / f.max) * 100));
+    return `
+      <div class="factor">
+        <div class="factor-top">
+          <span>${esc(f.name)} <span style="color:var(--muted);font-weight:400">(max. ${f.max})</span></span>
+          <span class="factor-pts">+${fmtNum(f.pts, 1)} Pkt</span>
+        </div>
+        <div class="factor-bar"><div class="factor-fill" style="width:${pct.toFixed(1)}%"></div></div>
+        <div class="factor-math"><strong>Wert:</strong> ${esc(f.valText)}<br /><strong>Rechnung:</strong> ${esc(f.math)}</div>
+      </div>`;
+  }).join('');
+
+  const penaltiesHtml = penalties.length
+    ? penalties.map(p => `
+        <div class="pen-row ${p.pts === 0 ? 'neutral' : ''}">
+          <div><strong>${esc(p.code)}</strong>: ${esc(p.desc)}</div>
+          <strong style="white-space:nowrap;color:${p.pts === 0 ? '#7dd3fc' : '#fca5a5'}">${p.pts === 0 ? '0 Pkt' : p.pts + ' Pkt'}</strong>
+        </div>`).join('')
+    : '<div class="sub" style="margin-bottom:10px">Keine Warn-Flags aktiv (0 Pkt Abzug).</div>';
+
+  document.getElementById('scoreModalBody').innerHTML = `
+    ${noticeHtml}
+    <div class="m-note">
+      <strong>Sättigungskurve:</strong> Jeder Faktor nutzt <code>Max × x / (x + Halbwert)</code>. Bei Erreichen des Halbwerts gibt es genau 50 % der Punkte. Extreme Ausreißer drücken das Ergebnis nicht mehr pauschal auf 99.
+    </div>
+
+    <div class="sec-title">1. Positive Faktoren (Summe max. 100 Pkt)</div>
+    <div class="factor-list">${factorsHtml}</div>
+
+    <div class="sec-title">2. Warn-Flags & Abzüge</div>
+    ${penaltiesHtml}
+
+    <div class="sec-title" style="margin-top:14px">3. Herleitung Netto-Gewinn pro Stück</div>
+    <div class="m-summary" style="margin-top:0">
+      <div class="m-sum-row"><span>Ziel-Verkaufspreis (${esc(item.ref_label || 'P10/P25')}-basiert):</span><span>${fmtGoldHtml(item.target_sell)}</span></div>
+      <div class="m-sum-row"><span>Abzgl. 5 % AH-Gebühr:</span><span style="color:var(--red)">-${fmtGoldHtml(ahFee)}</span></div>
+      <div class="m-sum-row"><span>Auszahlung nach Gebühr:</span><span>${fmtGoldHtml(afterFee)}</span></div>
+      <div class="m-sum-row"><span>Abzgl. Einkaufspreis:</span><span style="color:var(--red)">-${fmtGoldHtml(item.buy_now)}</span></div>
+      <div class="m-sum-row"><span>Abzgl. geschätztes Relist-Deposit:</span><span style="color:var(--red)">-${fmtGoldHtml(item.est_deposit)}</span></div>
+      <div class="m-sum-row m-sum-total">
+        <span>Netto-Gewinn / Stk (×${item.rec_qty} Stk):</span>
+        <span style="color:var(--green)">${fmtGoldHtml(item.net_profit)} (${fmtGoldPlain(totalProfitCopper)})</span>
+      </div>
+    </div>
+
+    <div class="m-summary">
+      <div class="m-sum-row"><span>Roh-Score aus den 5 Faktoren:</span><strong>+${fmtNum(rawScore, 1)} Pkt</strong></div>
+      <div class="m-sum-row"><span>Abzüge durch Warn-Flags:</span><strong style="color:${totalPenalty > 0 ? 'var(--red)' : 'var(--muted)'}">-${fmtNum(totalPenalty, 1)} Pkt</strong></div>
+      <div class="m-sum-row m-sum-total">
+        <span>Endergebnis (geklemmt 1 bis 99):</span>
+        <span style="color:var(--gold)">${fmtNum(calcFinal, 1)} Pkt ${Math.abs(calcFinal - item.score) >= 0.15 ? `(Export: ${fmtNum(item.score, 1)})` : ''}</span>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('scoreModalBackdrop').classList.add('open');
+}
+
+function closeScoreModal(ev) {
+  if (ev && ev.target !== ev.currentTarget) return;
+  document.getElementById('scoreModalBackdrop').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeScoreModal();
+});
 
 function normalizeHistory(raw) {
   return (raw || []).map(p => ({
@@ -395,7 +747,7 @@ function buildChartHtml(item) {
     return '<div class="sub" style="padding:18px;text-align:center">Preisverlauf erscheint ab 2 unterschiedlichen Snapshots.</div>';
   }
 
-  const w = 440, ht = 172, padL = 14, padR = 14, padT = 16, padB = 22;
+  const w = 480, ht = 195, padL = 14, padR = 14, padT = 16, padB = 22;
   const minTs = pts[0].ts;
   const maxTs = pts[pts.length - 1].ts;
   const tsSpan = Math.max(1, maxTs - minTs);
@@ -424,10 +776,10 @@ function buildChartHtml(item) {
       <line x1="${padL}" y1="${yBuy}" x2="${w-padR}" y2="${yBuy}" stroke="#22c55e" stroke-dasharray="4 4" stroke-width="1.2"/>
       <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${refPath}"/>
       <polyline fill="none" stroke="#94a3b8" stroke-width="1.3" opacity="0.75" points="${minPath}"/>
-      <text x="${padL+2}" y="${Math.max(12, Number(ySell)-4)}" fill="#f5b942" font-size="9.5">Ziel-VK: ${fmtGoldPlain(item.target_sell)}</text>
-      <text x="${padL+2}" y="${Math.min(ht-padB-3, Number(yBuy)+11)}" fill="#22c55e" font-size="9.5">Kauf: ${fmtGoldPlain(item.buy_now)}</text>
-      <text x="${padL}" y="${ht-5}" fill="#8b9bb4" font-size="9">${fmtShortDate(minTs)}</text>
-      <text x="${w-padR}" y="${ht-5}" fill="#8b9bb4" font-size="9" text-anchor="end">${fmtShortDate(maxTs)}</text>
+      <text x="${padL+2}" y="${Math.max(12, Number(ySell)-4)}" fill="#f5b942" font-size="10">Ziel-VK: ${fmtGoldPlain(item.target_sell)}</text>
+      <text x="${padL+2}" y="${Math.min(ht-padB-3, Number(yBuy)+12)}" fill="#22c55e" font-size="10">Kauf: ${fmtGoldPlain(item.buy_now)}</text>
+      <text x="${padL}" y="${ht-5}" fill="#8b9bb4" font-size="9.5">${fmtShortDate(minTs)}</text>
+      <text x="${w-padR}" y="${ht-5}" fill="#8b9bb4" font-size="9.5" text-anchor="end">${fmtShortDate(maxTs)}</text>
 
       <line id="chLine" x1="0" y1="${padT}" x2="0" y2="${ht-padB}" stroke="#e2e8f0" stroke-dasharray="2 2" stroke-width="1" opacity="0"/>
       <circle id="chDotRef" cx="0" cy="0" r="4" fill="#38bdf8" stroke="#0c0f14" stroke-width="1.5" opacity="0"/>
@@ -447,7 +799,7 @@ function attachChartHover(item) {
   const pts = normalizeHistory(item.history);
   if (pts.length < 2) return;
 
-  const w = 440, ht = 172, padL = 14, padR = 14, padT = 16, padB = 22;
+  const w = 480, ht = 195, padL = 14, padR = 14, padT = 16, padB = 22;
   const minTs = pts[0].ts;
   const tsSpan = Math.max(1, pts[pts.length - 1].ts - minTs);
   const vals = pts.flatMap(p => [p.min, p.ref]).concat([item.buy_now, item.target_sell]);
@@ -500,10 +852,10 @@ function attachChartHover(item) {
 
     const pctX = cx / w;
     if (pctX > 0.55) {
-      tooltip.style.left = '10px';
+      tooltip.style.left = '12px';
       tooltip.style.right = 'auto';
     } else {
-      tooltip.style.right = '10px';
+      tooltip.style.right = '12px';
       tooltip.style.left = 'auto';
     }
   };
@@ -533,7 +885,7 @@ function buildHeatmap(hm) {
   const blocks = [0,4,8,12,16,20];
   let html = '<div class="hm"><div></div>' + blocks.map(b => `<div class="hm-head">${b}-${b+4}h</div>`).join('');
   days.forEach((d, wd) => {
-    html += `<div class="hm-head" style="text-align:left;padding-top:5px">${d}</div>`;
+    html += `<div class="hm-head" style="text-align:left;padding-top:6px">${d}</div>`;
     blocks.forEach(b => {
       const v = hm[`${wd}_${b}`];
       if (v === undefined) {
@@ -562,46 +914,62 @@ function copySelectedName(btn) {
 }
 
 function renderDetail(item) {
-  const el = document.getElementById('detailPanel');
+  const el = document.getElementById('detailSection');
   if (!item) return;
   const totalInv = item.buy_now * item.rec_qty;
   const totalNet = item.net_profit * item.rec_qty;
   const refLbl = esc(item.ref_label || 'P10/P25');
   const floorInfo = item.bottom_qty !== undefined ? `${item.bottom_qty} Stk` : '-';
   const classText = item.item_class ? ` | ${esc(item.item_class)}` : '';
+  const flagsHtml = (item.flags || []).map(f =>
+    `<span class="flag ${f === 'BAIT' ? 'flag-neutral' : ''}">${esc(f)}</span>`
+  ).join('');
 
   el.innerHTML = `
-    <div class="detail-head">
-      ${iconHtml(item, true)}
-      <div>
-        <h2 class="q-${esc(item.quality)}">${esc(item.name)}</h2>
-        <div class="sub">ID #${item.item_id}${classText} | Bestand: ${item.cur_qty} | Verkäufe/Tag: ${item.daily_sold_est}</div>
+    <div class="detail-top">
+      <div class="detail-head">
+        ${iconHtml(item, true)}
+        <div>
+          <h2 class="q-${esc(item.quality)}">${esc(item.name)} ${flagsHtml}</h2>
+          <div class="sub">ID #${item.item_id}${classText} | Bestand: ${item.cur_qty} Stk | Gesch. Verkäufe/Tag: ${item.daily_sold_est} | Flip-Rate: ${item.flip_rate_pct.toFixed(1)} %</div>
+        </div>
+      </div>
+      <div class="detail-actions">
+        <button type="button" class="badge ${scoreClass(item.score)}" style="padding:7px 12px;font-size:0.84rem"
+          onclick="openScoreModal(${item.item_id})">
+          Score ${item.score.toFixed(1)} | Berechnung anzeigen
+        </button>
+        <button class="btn" onclick="copySelectedName(this)">Name kopieren</button>
+        <a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.wowhead.com/classic/de/item=${item.item_id}">Wowhead</a>
       </div>
     </div>
 
-    <div class="action-box">
-      <div class="action-row"><span>Empfohlene Kaufmenge:</span><strong>${item.rec_qty} Stk</strong></div>
-      <div class="action-row"><span>Günstigster Bestand (+5% Floor):</span><span>${floorInfo}</span></div>
-      <div class="action-row"><span>Max. Einkaufspreis / Stk:</span><span>${fmtGoldHtml(item.buy_now)}</span></div>
-      <div class="action-row"><span>Fair Value (${refLbl}):</span><span>${fmtGoldHtml(item.fair_value)}</span></div>
-      <div class="action-row"><span>Ziel-Verkaufspreis / Stk:</span><span>${fmtGoldHtml(item.target_sell)}</span></div>
-      <div class="action-row"><span>Gesch. Relist-Deposit / Stk:</span><span>${fmtGoldHtml(item.est_deposit)}</span></div>
-      <div class="action-row" style="border-top:1px solid var(--border);padding-top:6px;margin-top:6px">
-        <span>Gesamt-Invest -> Netto-Gewinn:</span>
-        <span>${fmtGoldHtml(totalInv)} -> <strong style="color:var(--green)">+${fmtGoldHtml(totalNet)}</strong></span>
+    <div class="detail-grid">
+      <div class="detail-box">
+        <div class="sec-title">Item-Daten & Kaufplan</div>
+        <div class="action-row"><span>Empfohlene Kaufmenge:</span><strong>${item.rec_qty} Stk</strong></div>
+        <div class="action-row"><span>Günstigster Bestand (+5 % Floor):</span><span>${floorInfo}</span></div>
+        <div class="action-row"><span>Max. Einkaufspreis / Stk:</span><span>${fmtGoldHtml(item.buy_now)}</span></div>
+        <div class="action-row"><span>Fair Value (${refLbl}):</span><span>${fmtGoldHtml(item.fair_value)}</span></div>
+        <div class="action-row"><span>Ziel-Verkaufspreis / Stk:</span><span>${fmtGoldHtml(item.target_sell)}</span></div>
+        <div class="action-row"><span>Gesch. Relist-Deposit / Stk:</span><span>${fmtGoldHtml(item.est_deposit)}</span></div>
+        <div class="action-row"><span>Netto-Gewinn / Stk (ROI):</span><span style="color:var(--green)">${fmtGoldHtml(item.net_profit)} (${item.net_roi_pct.toFixed(1)} %)</span></div>
+        <div class="action-row sep">
+          <span>Gesamt-Invest -> Netto-Gewinn:</span>
+          <span>${fmtGoldHtml(totalInv)} -> <strong style="color:var(--green)">+${fmtGoldHtml(totalNet)}</strong></span>
+        </div>
+        <div class="action-row"><span>Bestes Kauf- / VK-Fenster:</span><span>${esc(item.best_buy_window)} / ${esc(item.best_sell_window)}</span></div>
       </div>
-      <div class="action-row"><span>Bestes Kauf- / VK-Fenster:</span><span>${esc(item.best_buy_window)} / ${esc(item.best_sell_window)}</span></div>
-    </div>
 
-    <div class="sec-title">Interaktiver Preisverlauf (Maus drüberfahren für Details)</div>
-    <div class="chart-box">${buildChartHtml(item)}</div>
+      <div class="detail-box box-chart">
+        <div class="sec-title">Interaktiver Preisverlauf (Maus oder Finger drüberfahren)</div>
+        <div class="chart-box">${buildChartHtml(item)}</div>
+      </div>
 
-    <div class="sec-title">Timing-Heatmap auf ${refLbl}-Basis (Grün = kaufen | Gold = verkaufen)</div>
-    ${buildHeatmap(item.heatmap)}
-
-    <div class="tools">
-      <button class="btn" onclick="copySelectedName(this)">Name für Auctionator kopieren</button>
-      <a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.wowhead.com/classic/de/item=${item.item_id}">Wowhead öffnen</a>
+      <div class="detail-box">
+        <div class="sec-title">Timing-Heatmap auf ${refLbl}-Basis (Grün = kaufen | Gold = verkaufen)</div>
+        ${buildHeatmap(item.heatmap)}
+      </div>
     </div>
   `;
 
