@@ -23,6 +23,7 @@ RULESET_ID = 2
 HOUSE_ID = 111
 AH_CUT = 0.05
 KEEP_DAYS = 14
+MAX_SALES_GAP_SEC = 7200  # Max. 2 Stunden zwischen Scans fuer Komplettverkauf-Schaetzung
 DB_PATH = "wow_forever.db"
 EXPORT_JSON_PATH = "flips_export.json"
 
@@ -43,7 +44,10 @@ def init_db(conn: sqlite3.Connection) -> None:
             ts_utc INTEGER NOT NULL,
             weekday INTEGER NOT NULL,
             hour INTEGER NOT NULL,
-            total_listings INTEGER NOT NULL
+            total_listings INTEGER NOT NULL,
+            sales_version INTEGER DEFAULT 1,
+            delta_sec INTEGER DEFAULT 0,
+            sales_gap_ok INTEGER DEFAULT 1
         );
 
         CREATE TABLE IF NOT EXISTS item_stats (
@@ -83,7 +87,10 @@ def init_db(conn: sqlite3.Connection) -> None:
         """
     )
 
-    # Sichere Migration fuer bestehende Datenbanken
+    # Sichere Migration fuer bestehende Datenbanken (alte Scans bleiben erhalten)
+    ensure_column(conn, "snapshots", "sales_version", "INTEGER DEFAULT 1")
+    ensure_column(conn, "snapshots", "delta_sec", "INTEGER DEFAULT 0")
+    ensure_column(conn, "snapshots", "sales_gap_ok", "INTEGER DEFAULT 1")
     ensure_column(conn, "item_stats", "p25_unit", "INTEGER DEFAULT 0")
     ensure_column(conn, "item_stats", "bottom_qty", "INTEGER DEFAULT 0")
     ensure_column(conn, "item_stats", "has_random_suffix", "INTEGER DEFAULT 0")
@@ -136,6 +143,13 @@ def extract_localized(val, fallback: str = "") -> str:
     return fallback
 
 
+def percentile_sorted(sorted_vals: list, pct: float) -> int:
+    if not sorted_vals:
+        return 0
+    idx = min(len(sorted_vals) - 1, max(0, int((len(sorted_vals) - 1) * pct)))
+    return int(sorted_vals[idx])
+
+
 def fetch_auctions(token: str) -> list:
     headers = {"Authorization": f"Bearer {token}"}
     base = f"https://{REGION}.api.blizzard.com"
@@ -167,7 +181,13 @@ def fetch_item_icon(base: str, headers: dict, iid: int, media_href: str, hit_ns:
     urls = []
     if media_href:
         urls.append(ensure_namespace(media_href, hit_ns))
-    for ns in (hit_ns, NAMESPACE_STATIC, f"static-classic1x-{REGION}", f"static-classic-{REGION}", f"static-{REGION}"):
+    for ns in (
+        hit_ns,
+        NAMESPACE_STATIC,
+        f"static-classic1x-{REGION}",
+        f"static-classic-{REGION}",
+        f"static-{REGION}",
+    ):
         u = f"{base}/data/wow/media/item/{iid}?namespace={ns}"
         if u not in urls:
             urls.append(u)
@@ -188,7 +208,6 @@ def fetch_missing_item_meta(conn: sqlite3.Connection, token: str, item_ids: list
         return
     cur = conn.cursor()
     placeholders = ",".join("?" * len(item_ids))
-    # Bereits vollstaendig vorhandene Items (inkl. Icon & Kategorie) ueberspringen
     complete = {
         row[0]
         for row in cur.execute(
@@ -207,9 +226,13 @@ def fetch_missing_item_meta(conn: sqlite3.Connection, token: str, item_ids: list
 
     headers = {"Authorization": f"Bearer {token}"}
     base = f"https://{REGION}.api.blizzard.com"
-    namespaces = (NAMESPACE_STATIC, f"static-classic1x-{REGION}", f"static-classic-{REGION}", f"static-{REGION}")
+    namespaces = (
+        NAMESPACE_STATIC,
+        f"static-classic1x-{REGION}",
+        f"static-classic-{REGION}",
+        f"static-{REGION}",
+    )
 
-    # Bis zu 65 Lookups pro Lauf (fuellt Top 120 spaetestens in 2 Laeufen komplett auf)
     for iid in missing[:65]:
         existing = cur.execute(
             "SELECT name, sell_price, quality, item_class, icon_url FROM item_meta WHERE item_id = ?",
@@ -259,6 +282,13 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
     now_utc_ts = int(datetime.now(timezone.utc).timestamp())
 
     cur = conn.cursor()
+    prev_snap = cur.execute(
+        "SELECT id, ts_utc FROM snapshots ORDER BY ts_utc DESC LIMIT 1"
+    ).fetchone()
+    prev_snap_ts = prev_snap[1] if prev_snap else 0
+    delta_sec = max(0, now_utc_ts - prev_snap_ts) if prev_snap_ts else 0
+    gap_ok = 1 if (prev_snap_ts and 0 < delta_sec <= MAX_SALES_GAP_SEC) else 0
+
     prev_map = {
         row[0]: (row[1], row[2], row[3], row[4])
         for row in cur.execute(
@@ -303,40 +333,52 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
         ):
             per_item_suffix[item_id] = 1
 
-    # Duplikat-Schutz: Wenn Blizzard noch keinen neuen Stundenscan geliefert hat, ueberspringen
-    if prev_map and curr_map == prev_map:
-        last_id_row = cur.execute("SELECT MAX(id) FROM snapshots").fetchone()
-        if last_id_row and last_id_row[0]:
-            print("[SYNC SKIP] Blizzard-Daten seit letztem Scan unveraendert.")
-            return last_id_row[0]
+    # Duplikat-Schutz bei unveraendertem Blizzard-Dump
+    if prev_map and curr_map == prev_map and prev_snap:
+        print("[SYNC SKIP] Blizzard-Daten seit letztem Scan unveraendert.")
+        return prev_snap[0]
 
+    # Preisstatistiken vorab berechnen, damit die Verkaufsschaetzung ueberteuerte Abbrueche filtert
+    item_summary = {}
+    curr_price_cap = {}
+    for item_id, prices in per_item_prices.items():
+        prices.sort()
+        min_u = prices[0]
+        p10_u = percentile_sorted(prices, 0.10)
+        p25_u = percentile_sorted(prices, 0.25)
+        med_u = int(statistics.median(prices))
+        floor_cap = min_u * 1.05
+        bottom_qty = sum(q for p, q in per_item_offers[item_id] if p <= floor_cap)
+        item_summary[item_id] = (min_u, p10_u, p25_u, med_u, bottom_qty)
+        curr_price_cap[item_id] = int(max(p25_u, p10_u) * 1.15)
+
+    # Saubere Verkaufszaehlung (v2):
+    # 1) Geschrumpfte Stacks = sicherer Teilverkauf (auch nach Luecken)
+    # 2) Verschwundene Auktionen = nur wenn Scan-Luecke <= 2h, Restlaufzeit LONG/VERY_LONG
+    #    und Stueckpreis plausibel nahe am Marktpreis (<= P25 * 1.15)
     est_sold = defaultdict(int)
-    for aid, (item_id, _price, prev_qty, prev_tl) in prev_map.items():
+    for aid, (item_id, prev_price, prev_qty, prev_tl) in prev_map.items():
         if aid in curr_map:
             curr_qty = curr_map[aid][2]
             if curr_qty < prev_qty:
                 est_sold[item_id] += prev_qty - curr_qty
-        else:
-            if prev_tl != "SHORT":
+        elif gap_ok == 1 and prev_tl in ("LONG", "VERY_LONG"):
+            cap = curr_price_cap.get(item_id)
+            if cap and prev_price <= cap:
                 est_sold[item_id] += prev_qty
 
     cur.execute(
-        "INSERT INTO snapshots(ts_utc, weekday, hour, total_listings) VALUES (?, ?, ?, ?)",
-        (now_utc_ts, now_local.weekday(), now_local.hour, len(curr_map)),
+        """
+        INSERT INTO snapshots(
+            ts_utc, weekday, hour, total_listings, sales_version, delta_sec, sales_gap_ok
+        ) VALUES (?, ?, ?, ?, 2, ?, ?)
+        """,
+        (now_utc_ts, now_local.weekday(), now_local.hour, len(curr_map), delta_sec, gap_ok),
     )
     snap_id = cur.lastrowid
 
     rows = []
-    for item_id, prices in per_item_prices.items():
-        prices.sort()
-        n = len(prices)
-        min_u = prices[0]
-        p10_u = prices[max(0, int(n * 0.10) - 1)]
-        p25_u = prices[max(0, int(n * 0.25) - 1)]
-        med_u = int(statistics.median(prices))
-        floor_cap = min_u * 1.05
-        bottom_qty = sum(q for p, q in per_item_offers[item_id] if p <= floor_cap)
-
+    for item_id, (min_u, p10_u, p25_u, med_u, bottom_qty) in item_summary.items():
         rows.append(
             (
                 snap_id,
@@ -381,27 +423,63 @@ def sync_and_prune(conn: sqlite3.Connection, token: str) -> int:
     if snap_id % 24 == 0:
         conn.execute("VACUUM")
 
-    print(f"[SYNC OK] Snapshot #{snap_id}: {len(curr_map)} Auktionen, {len(rows)} Items.")
+    gap_note = f"delta={delta_sec}s, gap_ok={gap_ok}"
+    print(f"[SYNC OK] Snapshot #{snap_id}: {len(curr_map)} Auktionen, {len(rows)} Items ({gap_note}).")
     return snap_id
 
 
 def calc_ref_price(p10_u: int, p25_u: int, listing_cnt: int) -> int:
-    # Realistisches Verkaufsniveau: P10 bei liquiden Items, P25 bei kleineren Bestaenden
     if listing_cnt >= 10:
         return p10_u
     return p25_u if p25_u > 0 else p10_u
 
 
+def sat(val: float, k: float) -> float:
+    if val <= 0.0:
+        return 0.0
+    return val / (val + k)
+
+
 def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None:
     cur = conn.cursor()
+    latest_row = cur.execute(
+        "SELECT id, ts_utc, total_listings FROM snapshots ORDER BY ts_utc DESC LIMIT 1"
+    ).fetchone()
+    if not latest_row:
+        return
+
+    latest_id, latest_ts, latest_listings = latest_row
+    min_window_ts = latest_ts - (KEEP_DAYS * 86400)
+
     snaps = cur.execute(
-        "SELECT id, ts_utc, weekday, hour, total_listings FROM snapshots ORDER BY id DESC LIMIT 336"
+        """
+        SELECT id, ts_utc, weekday, hour, total_listings,
+               COALESCE(sales_version, 1), COALESCE(sales_gap_ok, 1), COALESCE(delta_sec, 0)
+        FROM snapshots
+        WHERE ts_utc >= ?
+        ORDER BY ts_utc DESC
+        """,
+        (min_window_ts,),
     ).fetchall()
 
-    latest_id, latest_ts, _, _, latest_listings = snaps[0]
-    snap_meta = {s[0]: (s[1], s[2], s[3]) for s in snaps}
+    snap_meta = {s[0]: (s[1], s[2], s[3], s[5], s[6], s[7]) for s in snaps}
     snap_ids = list(snap_meta.keys())
     hours_span = max(1.0, (snaps[0][1] - snaps[-1][1]) / 3600.0) if len(snaps) > 1 else 0.0
+
+    cutoff_48h = latest_ts - (48 * 3600)
+    cutoff_72h = latest_ts - (72 * 3600)
+    snaps_in_48h = sum(1 for s in snaps if s[1] >= cutoff_48h)
+
+    # Zeitbasis fuer saubere v2-Verkaufszaehlung vs. aeltere v1-Scans (sanfter Uebergang)
+    v2_valid_ids = {s[0] for s in snaps if s[5] >= 2 and s[6] == 1 and s[7] > 0}
+    v2_hours = sum(s[7] for s in snaps if s[0] in v2_valid_ids) / 3600.0
+    v1_snaps = [s for s in snaps if s[5] < 2]
+    v1_valid_ids = {s[0] for s in v1_snaps}
+    v1_hours = (
+        max(1.0, (v1_snaps[0][1] - v1_snaps[-1][1]) / 3600.0)
+        if len(v1_snaps) >= 2
+        else 0.0
+    )
 
     latest_rows = cur.execute(
         """
@@ -455,6 +533,9 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         if not h:
             continue
 
+        # Zeitlich sortierte Historie des Items
+        h.sort(key=lambda r: snap_meta[r[0]][0])
+
         flags = []
         is_bait = cur_min < cur_p10 * 0.65 and cur_cnt >= 4
         if is_bait:
@@ -472,20 +553,32 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         )
         clean_icon = "" if icon_url == "NONE" else icon_url
 
+        # 72h-Verlauf strikt nach echtem Zeitstempel
+        h_72h = [r for r in h if snap_meta[r[0]][0] >= cutoff_72h]
+        history_export = [
+            [snap_meta[r[0]][0], r[2], calc_ref_price(r[3], r[4], r[7]), r[5], r[6]]
+            for r in h_72h
+        ]
+
         if is_collecting:
             ref_now = cur_p25 if cur_p25 > 0 else cur_p10
             if ref_now <= buy_price or cur_cnt < 5:
                 continue
             target_sell = ref_now
-            est_deposit = int(vendor_price * 0.30)
+            est_deposit = int(vendor_price * 0.30 * 0.5)
             net_profit = int(target_sell * (1.0 - AH_CUT) - buy_price - est_deposit)
             if net_profit <= 0:
                 continue
             net_roi = (net_profit / buy_price) * 100.0
             if net_roi < 10.0:
                 continue
+            rec_qty = max(1, min(10, cur_qty // 4))
+            if not is_bait and cur_bottom_qty > 0:
+                rec_qty = min(rec_qty, cur_bottom_qty)
+            total_profit_g = (net_profit * rec_qty) / 10000.0
             penalty = 25.0 if has_suffix else 0.0
-            score = max(1.0, min(65.0, net_roi * 0.6 + min(25.0, cur_cnt * 0.8) - penalty))
+            raw_score = 30.0 * sat(total_profit_g, 5.0) + 25.0 * sat(net_roi, 20.0) + 10.0 * sat(cur_cnt, 12.0)
+            score = max(1.0, min(65.0, raw_score - penalty))
             candidates.append(
                 {
                     "item_id": item_id,
@@ -506,14 +599,11 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
                     "flip_rate_pct": 0.0,
                     "cur_qty": cur_qty,
                     "bottom_qty": cur_bottom_qty,
-                    "rec_qty": max(1, min(10, cur_qty // 4)),
+                    "rec_qty": rec_qty,
                     "best_buy_window": "Sammelt Daten...",
                     "best_sell_window": "Sammelt Daten...",
                     "flags": flags,
-                    "history": [
-                        [snap_meta[r[0]][0], r[2], calc_ref_price(r[3], r[4], r[7]), r[5], r[6]]
-                        for r in h[-72:]
-                    ],
+                    "history": history_export,
                     "heatmap": {},
                 }
             )
@@ -529,9 +619,25 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         if fair_value <= 0:
             continue
 
-        total_sold = sum(r[8] for r in h)
+        # 1) Tagesabsatz mit Vorrang fuer saubere v2-Verkaufszaehlung
+        sold_v2 = sum(r[8] for r in h if r[0] in v2_valid_ids)
+        sold_v1 = sum(r[8] for r in h if r[0] in v1_valid_ids)
+
+        daily_v2 = (sold_v2 / v2_hours) * 24.0 if v2_hours >= 0.5 else None
+        # Alte v1-Werte (inkl. MEDIUM-Ablaeufe) auf 35% daempfen, nur fuer die ersten 6h nach Update
+        daily_v1_damp = ((sold_v1 / v1_hours) * 24.0 * 0.35) if v1_hours >= 1.0 else None
+
+        if daily_v2 is not None and (v2_hours >= 6.0 or daily_v1_damp is None):
+            daily_sold = daily_v2
+        elif daily_v2 is not None and daily_v1_damp is not None:
+            w = min(1.0, v2_hours / 6.0)
+            daily_sold = (w * daily_v2) + ((1.0 - w) * daily_v1_damp)
+        elif daily_v1_damp is not None:
+            daily_sold = daily_v1_damp
+        else:
+            daily_sold = 0.0
+
         avg_qty = max(1.0, statistics.mean(r[6] for r in h))
-        daily_sold = (total_sold / hours_span) * 24.0
         daily_turnover = min(1.0, daily_sold / avg_qty)
 
         if cur_qty > avg_qty * 2.0 and cur_qty >= 20:
@@ -539,10 +645,34 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         if daily_sold < 5.0:
             flags.append("LOW_LIQ")
 
-        # Zeitfenster-Matrix auf Basis des realistischen Referenzpreises (P10/P25)
+        # 2) 48h-Trendpruefung auf echter Zeitstempel-Basis (erst aktiv ab >= 48h Datenbasis)
+        refs_recent_48h = [
+            calc_ref_price(r[3], r[4], r[7])
+            for r in h
+            if snap_meta[r[0]][0] >= cutoff_48h
+        ]
+        refs_older = [
+            calc_ref_price(r[3], r[4], r[7])
+            for r in h
+            if snap_meta[r[0]][0] < cutoff_48h
+        ]
+        med_recent_48h = int(statistics.median(refs_recent_48h)) if refs_recent_48h else fair_value
+
+        if (
+            hours_span >= 48.0
+            and snaps_in_48h >= 20
+            and len(refs_recent_48h) >= 8
+            and len(refs_older) >= 8
+        ):
+            med_older = statistics.median(refs_older)
+            if med_older > 0 and med_recent_48h < med_older * 0.85:
+                flags.append("DOWNTREND")
+                fair_value = min(fair_value, med_recent_48h)
+
+        # 3) Zeitfenster-Matrix auf Basis des realistischen Referenzpreises (P10/P25)
         slot_prices = defaultdict(list)
         for r in h:
-            _, wd, hr = snap_meta[r[0]]
+            _, wd, hr, *_ = snap_meta[r[0]]
             block = (hr // 4) * 4
             slot_prices[(wd, block)].append(calc_ref_price(r[3], r[4], r[7]))
 
@@ -551,11 +681,41 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         best_sell_key = max(slot_medians, key=slot_medians.get)
 
         target_sell = int(min(fair_value * 1.05, slot_medians[best_sell_key]))
+
+        # 4) 72h-Rebound-Test: schuetzt vor Einzel-Ausreissern und abgestuerzten Kursen
+        refs_72h_sorted = sorted(calc_ref_price(r[3], r[4], r[7]) for r in h_72h)
+        if len(refs_72h_sorted) >= 4:
+            cap_p85_72h = percentile_sorted(refs_72h_sorted, 0.85)
+            target_sell = min(target_sell, cap_p85_72h)
+
+        if "DOWNTREND" in flags:
+            target_sell = min(target_sell, int(med_recent_48h * 1.02))
+
+        if hours_span >= 24.0 and len(h_72h) >= 6 and target_sell > 0:
+            rebound_threshold = target_sell * 0.95
+            touched_blocks = set()
+            touched_last_48h = False
+            for r in h_72h:
+                ts_r, _, hr_r, *_ = snap_meta[r[0]]
+                ref_r = calc_ref_price(r[3], r[4], r[7])
+                if ref_r >= rebound_threshold:
+                    day_key = datetime.fromtimestamp(ts_r).date()
+                    touched_blocks.add((day_key, (hr_r // 4) * 4))
+                    if ts_r >= cutoff_48h:
+                        touched_last_48h = True
+
+            failed_rebound = len(touched_blocks) < 2 or (hours_span >= 48.0 and not touched_last_48h)
+            if failed_rebound:
+                flags.append("NO_REBOUND")
+                cap_p65_72h = percentile_sorted(refs_72h_sorted, 0.65)
+                target_sell = min(target_sell, cap_p65_72h)
+
         if target_sell <= buy_price:
             continue
 
-        expected_relists = max(0.0, (1.0 / max(daily_turnover, 0.05)) - 1.0)
-        est_deposit = int(vendor_price * 0.30 * min(expected_relists, 5.0))
+        # 5) Reale Gebuehren inkl. Mindest-Relist-Risiko (0.25 Relists gegen 0c-Illusion)
+        expected_relists = min(5.0, max(0.25, (1.0 / max(daily_turnover, 0.05)) - 1.0))
+        est_deposit = int(vendor_price * 0.30 * expected_relists)
         net_profit = int(target_sell * (1.0 - AH_CUT) - buy_price - est_deposit)
         if net_profit <= 0:
             continue
@@ -569,6 +729,22 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
         if net_roi < 10.0 or daily_sold < 1.5:
             continue
 
+        rec_qty = max(1, int(min(cur_qty * 0.25, max(1.0, daily_sold * 0.35))))
+        if not is_bait and cur_bottom_qty > 0:
+            rec_qty = min(rec_qty, cur_bottom_qty)
+
+        # 6) Weiche Saettigungskurve + Gewichtung des absoluten Goldgewinns
+        total_profit_g = (net_profit * rec_qty) / 10000.0
+        pos_discount = max(0.0, discount_pct)
+
+        raw_score = (
+            30.0 * sat(total_profit_g, 5.0)     # Halbwert bei 5g Gesamtgewinn pro Flip
+            + 25.0 * sat(daily_turnover, 0.20)  # Halbwert bei 20% taegl. Flip-Rate
+            + 20.0 * sat(net_roi, 20.0)         # Halbwert bei 20% Netto-ROI
+            + 15.0 * sat(pos_discount, 15.0)    # Halbwert bei 15% Rabatt zum Fair Value
+            + 10.0 * sat(daily_sold, 12.0)      # Halbwert bei 12 Verkaeufen/Tag
+        )
+
         penalty = 0.0
         if "SELL_WALL" in flags:
             penalty += 12.0
@@ -576,22 +752,14 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
             penalty += 15.0
         if "LOW_LIQ" in flags:
             penalty += 10.0
+        if "DOWNTREND" in flags:
+            penalty += 18.0
+        if "NO_REBOUND" in flags:
+            penalty += 12.0
         if "SUFFIX_GEAR" in flags:
             penalty += 25.0
 
-        score = max(
-            1.0,
-            min(
-                99.0,
-                min(35.0, net_roi * 0.65)
-                + min(35.0, daily_turnover * 50.0)
-                + min(20.0, max(0.0, discount_pct) * 0.65)
-                + min(10.0, daily_sold * 0.25)
-                - penalty,
-            ),
-        )
-
-        rec_qty = max(1, int(min(cur_qty * 0.25, max(1.0, daily_sold * 0.35))))
+        score = max(1.0, min(99.0, raw_score - penalty))
         heatmap = {f"{wd}_{blk}": price for (wd, blk), price in slot_medians.items()}
 
         candidates.append(
@@ -618,10 +786,7 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
                 "best_buy_window": f"{WEEKDAYS_DE[best_buy_key[0]]} {best_buy_key[1]:02d}-{best_buy_key[1]+4:02d}h",
                 "best_sell_window": f"{WEEKDAYS_DE[best_sell_key[0]]} {best_sell_key[1]:02d}-{best_sell_key[1]+4:02d}h",
                 "flags": flags,
-                "history": [
-                    [snap_meta[r[0]][0], r[2], calc_ref_price(r[3], r[4], r[7]), r[5], r[6]]
-                    for r in h[-72:]
-                ],
+                "history": history_export,
                 "heatmap": heatmap,
             }
         )
@@ -629,7 +794,6 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
     candidates.sort(key=lambda x: x["score"], reverse=True)
     top = candidates[:top_n]
 
-    # Deutsche Namen, Kategorien und offizielle Icons nachladen
     fetch_missing_item_meta(conn, token, [c["item_id"] for c in top])
     for c in top:
         row = cur.execute(
@@ -656,7 +820,7 @@ def build_export(conn: sqlite3.Connection, token: str, top_n: int = 120) -> None
 
     with open(EXPORT_JSON_PATH, "w", encoding="utf-8") as f:
         json.dump(export_payload, f, ensure_ascii=False, separators=(",", ":"))
-    print(f"[EXPORT OK] {len(top)} Empfehlungen nach {EXPORT_JSON_PATH} geschrieben.")
+    print(f"[EXPORT OK] {len(top)} Empfehlungen nach {EXPORT_JSON_PATH} geschrieben (v2_hours={v2_hours:.1f}).")
 
 
 def main() -> None:
