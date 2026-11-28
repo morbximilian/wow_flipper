@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WoW: Forever AH Flip Advisor (EU / Normal / Allianz)</title>
+<style>
+  :root {
+    --bg: #0c0f14; --panel: #141923; --panel-2: #1b2230; --border: #283246;
+    --text: #e6edf7; --muted: #8b9bb4; --gold: #f5b942; --green: #22c55e;
+    --amber: #f59e0b; --red: #ef4444; --blue: #38bdf8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.45;
+  }
+  .wrap { max-width: 1520px; margin: 0 auto; padding: 18px 20px 36px; }
+  header {
+    display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between;
+    align-items: center; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  }
+  h1 { margin: 0; font-size: 1.35rem; color: var(--gold); letter-spacing: 0.3px; }
+  .sub { font-size: 0.84rem; color: var(--muted); margin-top: 3px; }
+  .btn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    padding: 8px 13px; border-radius: 8px; cursor: pointer; font-size: 0.84rem;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .btn:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-sm { padding: 6px 11px; font-size: 0.78rem; }
+  .banner {
+    margin-top: 14px; padding: 11px 15px; border-radius: 10px;
+    background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4);
+    color: #fde68a; font-size: 0.86rem; display: none;
+  }
+  .kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px; margin: 14px 0;
+  }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 11px 14px;
+  }
+  .kpi .lbl { font-size: 0.73rem; color: var(--muted); text-transform: uppercase; }
+  .kpi .val { font-size: 1.2rem; font-weight: 700; margin-top: 4px; }
+
+  /* Strategie-Presets & Score-Regler */
+  .strategy-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 13px 15px; margin-bottom: 12px;
+  }
+  .strategy-top {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center;
+  }
+  .preset-group { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+  .preset-label {
+    font-size: 0.73rem; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.4px; margin-right: 4px; font-weight: 600;
+  }
+  .preset-pill {
+    background: var(--bg); color: var(--muted); border: 1px solid var(--border);
+    padding: 6px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .preset-pill:hover { color: var(--text); border-color: #475569; }
+  .preset-pill.active {
+    background: rgba(245, 185, 66, 0.16); color: var(--gold);
+    border-color: rgba(245, 185, 66, 0.65);
+  }
+  .preset-pill.custom-tag {
+    border-style: dashed; color: var(--blue); border-color: rgba(56, 189, 248, 0.55);
+    background: rgba(56, 189, 248, 0.1); cursor: default;
+  }
+  .strategy-desc {
+    margin-top: 9px; font-size: 0.8rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;
+  }
+  .tuning-drawer {
+    display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+  }
+  .tuning-drawer.open { display: block; }
+  .tuning-section-title {
+    font-size: 0.72rem; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.4px; margin: 0 0 10px 0; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+  }
+  .slider-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px; margin-bottom: 14px;
+  }
+  .slider-item {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px;
+    padding: 10px 12px;
+  }
+  .slider-head {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+    font-size: 0.8rem; font-weight: 600; margin-bottom: 7px;
+  }
+  .slider-val {
+    font-size: 0.76rem; color: var(--gold); font-variant-numeric: tabular-nums;
+    background: rgba(245, 185, 66, 0.12); padding: 1px 7px; border-radius: 999px;
+    white-space: nowrap;
+  }
+  .slider-sub { font-size: 0.71rem; color: var(--muted); margin-top: 5px; }
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+    background: var(--bg); border-radius: 999px; outline: none;
+    border: 1px solid var(--border); cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 16px; height: 16px;
+    border-radius: 50%; background: var(--gold); border: 2px solid var(--bg);
+    box-shadow: 0 0 0 2px rgba(245, 185, 66, 0.25); cursor: pointer;
+    transition: transform 0.1s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.12); }
+  input[type="range"]::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%; background: var(--gold);
+    border: 2px solid var(--bg); cursor: pointer;
+  }
+
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: end;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 14px;
+  }
+  .fgroup { display: flex; flex-direction: column; gap: 4px; }
+  .fgroup label { font-size: 0.72rem; color: var(--muted); }
+  .fgroup input, .fgroup select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    padding: 7px 10px; border-radius: 6px; font-size: 0.84rem;
+  }
+  .fcheck { display: flex; align-items: center; gap: 6px; padding: 7px 4px; font-size: 0.84rem; cursor: pointer; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden;
+  }
+  .list-card { margin-bottom: 18px; }
+  .list-bar {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    padding: 9px 14px; background: var(--panel-2); border-bottom: 1px solid var(--border);
+    font-size: 0.78rem; color: var(--muted); flex-wrap: wrap;
+  }
+  .table-wrap { max-height: 48vh; min-height: 220px; overflow-y: auto; overflow-x: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; table-layout: auto; }
+  th, td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  th {
+    position: sticky; top: 0; background: var(--panel-2); color: var(--muted);
+    font-size: 0.72rem; text-transform: uppercase; z-index: 2; white-space: nowrap;
+  }
+  tbody tr { cursor: pointer; transition: background 0.12s; }
+  tbody tr:hover { background: rgba(245, 185, 66, 0.06); }
+  tbody tr.active { background: rgba(245, 185, 66, 0.13); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .subval { display: block; font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+  .win-cell { font-size: 0.78rem; white-space: nowrap; line-height: 1.35; }
+  .win-k { color: var(--green); }
+  .win-v { color: var(--gold); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px;
+    border-radius: 999px; font-weight: 700; font-size: 0.78rem; border: 1px solid transparent;
+    cursor: pointer; transition: transform 0.12s, border-color 0.12s, filter 0.12s;
+  }
+  .badge:hover { transform: scale(1.06); filter: brightness(1.15); border-color: currentColor; }
+  .badge-info { font-size: 0.68rem; opacity: 0.75; font-weight: 600; }
+  .b-high { background: rgba(34, 197, 94, 0.18); color: var(--green); }
+  .b-mid { background: rgba(245, 158, 11, 0.18); color: var(--amber); }
+  .b-low { background: rgba(239, 68, 68, 0.18); color: var(--red); }
+
+  .flag {
+    display: inline-block; font-size: 0.66rem; padding: 1px 5px; border-radius: 4px;
+    background: rgba(239, 68, 68, 0.2); color: #fca5a5; margin-left: 5px; vertical-align: middle;
+  }
+  .flag-neutral { background: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
+  .item-cell { display: flex; align-items: center; gap: 9px; min-width: 180px; }
+  .item-name-wrap { display: flex; flex-direction: column; min-width: 0; }
+  .item-name-line { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-weight: 500; }
+  .item-cat { font-size: 0.72rem; color: var(--muted); }
+  .item-icon {
+    width: 28px; height: 28px; border-radius: 5px; object-fit: cover;
+    background: #0c0f14; flex-shrink: 0; border: 1.5px solid #475569;
+  }
+  .item-icon-lg { width: 42px; height: 42px; border-radius: 8px; }
+  .item-icon-fallback {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; color: var(--muted);
+  }
+  .qb-POOR { border-color: #9d9d9d; } .qb-COMMON { border-color: #cbd5e1; }
+  .qb-UNCOMMON { border-color: #1eff00; } .qb-RARE { border-color: #0070dd; }
+  .qb-EPIC { border-color: #a335ee; } .qb-LEGENDARY { border-color: #ff8000; }
+
+  .detail-wrap { padding: 18px; }
+  .detail-top {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+    gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 16px;
+  }
+  .detail-head { display: flex; align-items: center; gap: 12px; }
+  .detail-head h2 { margin: 0; font-size: 1.2rem; }
+  .detail-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .detail-grid {
+    display: grid; grid-template-columns: 1fr 1.35fr 1.1fr; gap: 16px; align-items: start;
+  }
+  .detail-box {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px;
+  }
+  .sec-title {
+    font-size: 0.75rem; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.4px; margin: 0 0 10px 0; font-weight: 600;
+  }
+  .action-row { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0; font-size: 0.87rem; }
+  .action-row.sep { border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+
+  .chart-box {
+    position: relative; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px; user-select: none;
+  }
+  .chart-legend {
+    display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.72rem;
+    color: var(--muted); margin-bottom: 6px;
+  }
+  .leg-dot {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px;
+    vertical-align: middle;
+  }
+  .chart-tooltip {
+    position: absolute; top: 34px; pointer-events: none; display: none;
+    background: rgba(15, 20, 30, 0.96); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 0.76rem; min-width: 180px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55); z-index: 10;
+  }
+  .ct-time { font-weight: 700; color: var(--gold); margin-bottom: 4px; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+  .ct-row { display: flex; justify-content: space-between; gap: 12px; margin: 2px 0; }
+
+  .hm { display: grid; grid-template-columns: 32px repeat(6, 1fr); gap: 3px; font-size: 0.72rem; }
+  .hm-cell {
+    padding: 6px 2px; text-align: center; border-radius: 4px; background: var(--bg);
+    color: var(--text); border: 1px solid rgba(255,255,255,0.04); font-variant-numeric: tabular-nums;
+  }
+  .hm-head { color: var(--muted); text-align: center; padding: 3px 1px; font-size: 0.68rem; }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(4, 7, 12, 0.78);
+    backdrop-filter: blur(3px); display: none; align-items: center; justify-content: center;
+    padding: 16px; z-index: 100;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    width: 100%; max-width: 690px; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.7);
+  }
+  .modal-head {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: 16px 18px; border-bottom: 1px solid var(--border); background: var(--panel-2);
+    position: sticky; top: 0; z-index: 2;
+  }
+  .modal-head h3 { margin: 0; font-size: 1.05rem; }
+  .modal-close {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+    width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 1.1rem;
+    line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); border-color: var(--gold); }
+  .modal-body { padding: 16px 18px 20px; font-size: 0.86rem; }
+  .m-note {
+    background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3);
+    color: #bae6fd; padding: 9px 12px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 14px;
+  }
+  .m-strat-bar {
+    display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 12px; margin-bottom: 12px; font-size: 0.8rem;
+  }
+  .factor-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .factor {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px;
+    padding: 10px 12px;
+  }
+  .factor-top { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; }
+  .factor-pts { color: var(--green); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .factor-bar {
+    height: 6px; background: var(--bg); border-radius: 999px; overflow: hidden; margin: 6px 0;
+  }
+  .factor-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #22c55e); border-radius: 999px; }
+  .factor-math { font-size: 0.77rem; color: var(--muted); }
+  .pen-row {
+    display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+    padding: 8px 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.28);
+    border-radius: 8px; margin-bottom: 7px; font-size: 0.82rem;
+  }
+  .pen-row.neutral {
+    background: rgba(56, 189, 248, 0.08); border-color: rgba(56, 189, 248, 0.25);
+  }
+  .m-summary {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-top: 14px;
+  }
+  .m-sum-row { display: flex; justify-content: space-between; margin: 4px 0; }
+  .m-sum-total {
+    border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px;
+    font-size: 1rem; font-weight: 700;
+  }
+
+  .q-POOR { color: #9d9d9d; } .q-COMMON { color: #ffffff; } .q-UNCOMMON { color: #1eff00; }
+  .q-RARE { color: #0070dd; } .q-EPIC { color: #a335ee; } .q-LEGENDARY { color: #ff8000; }
+  .g { color: #ffd700; } .s { color: #c7c7cf; } .c { color: #eda55f; }
+
+  @media (max-width: 1180px) {
+    .detail-grid { grid-template-columns: 1fr 1fr; }
+    .detail-box.box-chart { grid-column: 1 / -1; }
+  }
+  @media (max-width: 900px) {
+    .wrap { padding: 12px 12px 28px; }
+    .table-wrap { max-height: 55vh; }
+    thead { display: none; }
+    table, tbody { display: block; width: 100%; }
+    tbody tr {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px 10px; padding: 12px; border-bottom: 1px solid var(--border);
+    }
+    tbody td {
+      display: block; padding: 0; border: none; text-align: left !important; white-space: normal;
+    }
+    td.col-score { grid-column: span 1; align-self: center; }
+    td.col-item { grid-column: span 5; align-self: center; }
+    .item-cell { min-width: 0; }
+    td.col-metric { grid-column: span 2; }
+    td.col-metric::before {
+      content: attr(data-label); display: block; font-size: 0.65rem;
+      color: var(--muted); text-transform: uppercase; margin-bottom: 2px;
+    }
+    .detail-grid { grid-template-columns: 1fr; }
+    .detail-box.box-chart { grid-column: auto; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>WoW: Forever AH Flip Advisor</h1>
+      <div class="sub" id="metaLine">Lade Live-Daten...</div>
+    </div>
+    <div>
+      <button class="btn" onclick="loadData()">Daten neu laden</button>
+    </div>
+  </header>
+
+  <div class="banner" id="statusBanner"></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="lbl">Empfohlene Flips</div><div class="val" id="kCount">-</div></div>
+    <div class="kpi"><div class="lbl">Bester Score (aktiv)</div><div class="val" id="kTopScore" style="color:var(--green)">-</div></div>
+    <div class="kpi"><div class="lbl">Ø Netto-ROI (gefiltert)</div><div class="val" id="kAvgRoi" style="color:var(--gold)">-</div></div>
+    <div class="kpi"><div class="lbl">Datenbasis (Ziel: 168h)</div><div class="val" id="kHistory">-</div></div>
+  </div>
+
+  <!-- Strategie-Presets & interaktive Score-Regler -->
+  <div class="strategy-card">
+    <div class="strategy-top">
+      <div class="preset-group" id="presetBar">
+        <span class="preset-label">Strategie</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button type="button" class="btn btn-sm" id="toggleTuningBtn" onclick="toggleTuningDrawer()">
+          Score-Logik anpassen ▾
+        </button>
+      </div>
+    </div>
+    <div class="strategy-desc">
+      <span id="presetDesc"></span>
+      <span id="weightSummary" style="color:#cbd5e1;font-variant-numeric:tabular-nums"></span>
+    </div>
+
+    <div class="tuning-drawer" id="tuningDrawer">
+      <div class="tuning-section-title">
+        <span>Gewichtung der 5 Score-Faktoren (wird automatisch auf 100 Punkte normiert)</span>
+        <button type="button" class="btn btn-sm" onclick="applyPreset('balanced')">Auf Standard zurücksetzen</button>
+      </div>
+      <div class="slider-grid">
+        <div class="slider-item">
+          <div class="slider-head">
+            <span>Gesamtgewinn (Gold)</span>
+            <span class="slider-val" id="lblWProfit">30 Pkt</span>
+          </div>
+          <input type="range" id="slWProfit" min="0" max="50" step="1" oninput="onSliderChange()" />
+          <div class="slider-sub">Absoluter Netto-Gewinn pro empfohlenem Einkaufspaket</div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-head">
+            <span>Tägliche Flip-Rate</span>
+            <span class="slider-val" id="lblWFlip">25 Pkt</span>
+          </div>
+          <input type="range" id="slWFlip" min="0" max="50" step="1" oninput="onSliderChange()" />
+          <div class="slider-sub">Wie schnell der Bestand im Auktionshaus täglich umschlägt</div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-head">
+            <span>Netto-ROI (%)</span>
+            <span class="slider-val" id="lblWRoi">20 Pkt</span>
+          </div>
+          <input type="range" id="slWRoi" min="0" max="50" step="1" oninput="onSliderChange()" />
+          <div class="slider-sub">Prozentuale Rendite nach AH-Gebühr und Relist-Deposit</div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-head">
+            <span>Fair-Value-Rabatt (%)</span>
+            <span class="slider-val" id="lblWDiscount">15 Pkt</span>
+          </div>
+          <input type="range" id="slWDiscount" min="0" max="50" step="1" oninput="onSliderChange()" />
+          <div class="slider-sub">Preisabstand des aktuellen Einstiegs zum historischen Niveau</div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-head">
+            <span>Tagesvolumen</span>
+            <span class="slider-val" id="lblWVolume">10 Pkt</span>
+          </div>
+          <input type="range" id="slWVolume" min="0" max="50" step="1" oninput="onSliderChange()" />
+          <div class="slider-sub">Geschätzte verkaufte Stückzahl pro Tag</div>
+        </div>
+      </div>
+
+      <div class="tuning-section-title">
+        <span>Skalierung & Risikofilter</span>
+      </div>
+      <div class="slider-grid" style="margin-bottom:0">
+        <div class="slider-item">
+          <div class="slider-head">
+            <span>Gold-Skala (Halbwert)</span>
+            <span class="slider-val" id="lblHalfGold">5,0g</span>
+          </div>
+          <input type="range" id="slHalfGold" min="0.5" max="25" step="0.5" oninput="onSliderChange()" />
+          <div class="slider-sub">Ab diesem Gesamtgewinn pro Flip gibt es 50 % der Gewinn-Punkte (niedrig = günstigere Items stärker bewerten)</div>
+        </div>
+        <div class="slider-item">
+          <div class="slider-head">
+            <span>Risiko-Strenge (Warn-Flags)</span>
+            <span class="slider-val" id="lblPenaltyMult">100 %</span>
+          </div>
+          <input type="range" id="slPenaltyMult" min="50" max="150" step="10" oninput="onSliderChange()" />
+          <div class="slider-sub">Steuert, wie stark Risiken wie SELL_WALL, DOWNTREND oder NO_REBOUND Punkte abziehen</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailfilter -->
+  <div class="filters">
+    <div class="fgroup">
+      <label>Item suchen</label>
+      <input type="text" id="fSearch" placeholder="z.B. Lotus, Erz..." oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Kategorie</label>
+      <select id="fClass" onchange="render()">
+        <option value="">Alle Kategorien</option>
+        <option value="__CONSUMABLES_CRAFT__">Verbrauchsgüter & Handwerk</option>
+      </select>
+    </div>
+    <div class="fgroup">
+      <label>Min. Score</label>
+      <input type="number" id="fScore" value="20" min="0" max="100" style="width:80px" oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Min. Gewinn (Gold)</label>
+      <input type="number" id="fMinProfit" placeholder="0" min="0" step="0.5" style="width:96px" oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Min. Flip-Rate %/Tag</label>
+      <input type="number" id="fFlip" value="0" min="0" max="100" style="width:98px" oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Max. Einkauf (Gold)</label>
+      <input type="number" id="fMaxGold" placeholder="alle" min="0" step="0.5" style="width:96px" oninput="render()" />
+    </div>
+    <div class="fgroup">
+      <label>Sortierung</label>
+      <select id="fSort" onchange="render()">
+        <option value="score">Flip-Score (hoch -> niedrig)</option>
+        <option value="total_profit">Gesamtgewinn pro Flip</option>
+        <option value="net_profit">Netto-Gewinn / Stk</option>
+        <option value="net_roi_pct">Netto-ROI %</option>
+        <option value="flip_rate_pct">Flip-Rate %/Tag</option>
+        <option value="daily_sold_est">Verkäufe / Tag</option>
+      </select>
+    </div>
+    <label class="fcheck">
+      <input type="checkbox" id="fSafeOnly" onchange="render()" />
+      Ohne Warn-Flags
+    </label>
+  </div>
+
+  <!-- Vollbreite Item-Liste -->
+  <div class="card list-card">
+    <div class="list-bar">
+      <span>Klicke auf eine Zeile für Details darunter. Klicke auf den <strong>Score</strong> für die vollständige Berechnung nach aktueller Strategie.</span>
+      <a href="#detailSection" style="color:var(--gold);text-decoration:none;font-weight:600">Zu den Item-Details ↓</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Score</th>
+            <th>Item</th>
+            <th class="num">Kauf jetzt</th>
+            <th class="num">Ziel-VK</th>
+            <th class="num">Netto / Stk (Gesamt)</th>
+            <th class="num">ROI</th>
+            <th class="num">Flip / Tag</th>
+            <th>Kauf- / VK-Fenster</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Vollbreiter Detailbereich darunter -->
+  <div class="card detail-wrap" id="detailSection">
+    <div class="sub">Wähle oben ein Item für Item-Daten, interaktiven Preisverlauf und Timing-Heatmap.</div>
+  </div>
+</div>
+
+<!-- Score-Berechnungs-Modal -->
+<div class="modal-backdrop" id="scoreModalBackdrop" onclick="closeScoreModal(event)">
+  <div class="modal" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h3 id="scoreModalTitle">Score-Berechnung</h3>
+      <button class="modal-close" onclick="closeScoreModal()" aria-label="Schließen">&times;</button>
+    </div>
+    <div class="modal-body" id="scoreModalBody"></div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'wow_forever_flipper_cfg_v1';
+
+const PRESETS = {
+  balanced: {
+    label: 'Ausgewogen',
+    desc: 'Allrounder mit ausgewogener Balance aus absolutem Goldgewinn, Flip-Rate und Rendite.',
+    weights: { profit: 30, flip: 25, roi: 20, discount: 15, volume: 10 },
+    halfGold: 5.0,
+    penaltyMult: 1.0,
+    filters: { cat: '', minScore: '20', minProfit: '', minFlip: '0', maxGold: '', safeOnly: false }
+  },
+  low_budget: {
+    label: 'Kleines Budget',
+    desc: 'Günstige Einstiegs-Flips bis 5g Stückpreis mit starkem Fokus auf prozentualen ROI und schnellen Verkauf.',
+    weights: { profit: 5, flip: 30, roi: 35, discount: 20, volume: 10 },
+    halfGold: 0.5,
+    penaltyMult: 1.0,
+    filters: { cat: '', minScore: '20', minProfit: '', minFlip: '10', maxGold: '5', safeOnly: false }
+  },
+  fast_flip: {
+    label: 'Hoher Umschlag',
+    desc: 'Schnell drehende Items mit hoher Liquidität und täglicher Flip-Rate ab 20 %, damit Kapital kaum gebunden bleibt.',
+    weights: { profit: 10, flip: 40, roi: 15, discount: 10, volume: 25 },
+    halfGold: 2.0,
+    penaltyMult: 1.1,
+    filters: { cat: '', minScore: '20', minProfit: '', minFlip: '20', maxGold: '', safeOnly: false }
+  },
+  consumables: {
+    label: 'Verbrauchsgüter & Handwerk',
+    desc: 'Tränke, Bufffood, Kräuter, Erze, Stoffe und Reagenzien mit solidem Tagesabsatz und geringem Relist-Risiko.',
+    weights: { profit: 25, flip: 30, roi: 15, discount: 10, volume: 20 },
+    halfGold: 3.0,
+    penaltyMult: 1.0,
+    filters: { cat: '__CONSUMABLES_CRAFT__', minScore: '15', minProfit: '', minFlip: '0', maxGold: '', safeOnly: false }
+  },
+  high_profit: {
+    label: 'Große Margen',
+    desc: 'Fokus auf maximalen absoluten Goldgewinn pro Flip (ab 1g Netto/Stk) mit stärkerer Gewichtung auf Rabatt und Kapitalertrag.',
+    weights: { profit: 45, flip: 10, roi: 20, discount: 20, volume: 5 },
+    halfGold: 15.0,
+    penaltyMult: 1.0,
+    filters: { cat: '', minScore: '20', minProfit: '1', minFlip: '0', maxGold: '', safeOnly: false }
+  }
+};
+
+const FLAG_INFO = {
+  SELL_WALL: { pts: 12, desc: 'Aktueller Bestand ist mehr als doppelt so hoch wie der Schnitt (bei mindestens 20 Stück).' },
+  HIGH_DEPOSIT: { pts: 15, desc: 'Geschätzte Relist-Gebühren betragen mehr als 40 % des Netto-Gewinns.' },
+  LOW_LIQ: { pts: 10, desc: 'Weniger als 5 geschätzte Verkäufe pro Tag.' },
+  DOWNTREND: { pts: 18, desc: 'Der 48h-Median liegt mehr als 15 % unter dem älteren Niveau (Fair Value und Ziel-VK wurden entsprechend begrenzt).' },
+  NO_REBOUND: { pts: 12, desc: 'Das Zielpreis-Niveau wurde in den letzten 72h nicht in mindestens zwei getrennten 4h-Blöcken erreicht.' },
+  SUFFIX_GEAR: { pts: 25, desc: 'Ausrüstung mit Zufalls-Suffixen oder Bonus-IDs (Preise verschiedener Varianten liegen unter derselben Item-ID).' },
+  BAIT: { pts: 0, desc: 'Einzelnes Tiefstangebot lag >35 % unter P10. Einkaufspreis wurde auf P10 angehoben (kein Punktabzug).' }
+};
+
+let DATA = null;
+let SELECTED_ID = null;
+let CONFIG = {
+  presetId: 'balanced',
+  weights: { ...PRESETS.balanced.weights },
+  halfGold: PRESETS.balanced.halfGold,
+  penaltyMult: PRESETS.balanced.penaltyMult
+};
+
+function esc(str) {
+  return String(str ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+function fmtNum(n, dec = 1) {
+  return Number(n).toFixed(dec).replace('.', ',');
+}
+
+function fmtGoldHtml(copper) {
+  const neg = copper < 0 ? '-' : '';
+  const abs = Math.round(Math.abs(copper));
+  const g = Math.floor(abs / 10000);
+  const s = Math.floor((abs % 10000) / 100);
+  const c = abs % 100;
+  let out = neg;
+  if (g > 0) out += `<span class="g">${g}g</span> `;
+  if (g > 0 || s > 0) out += `<span class="s">${String(s).padStart(g > 0 ? 2 : 1, '0')}s</span> `;
+  out += `<span class="c">${String(c).padStart((g > 0 || s > 0) ? 2 : 1, '0')}c</span>`;
+  return out;
+}
+
+function fmtGoldPlain(copper) {
+  const abs = Math.round(Math.abs(copper));
+  const g = Math.floor(abs / 10000);
+  const s = Math.floor((abs % 10000) / 100);
+  const c = abs % 100;
+  return `${copper < 0 ? '-' : ''}${g}g ${s}s ${c}c`;
+}
+
+function fmtShortDate(ts) {
+  const d = new Date(ts * 1000);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${dd}.${mm}. ${hh}:${mi}`;
+}
+
+window.imgFallback = function(el) {
+  const span = document.createElement('span');
+  span.className = el.className + ' item-icon-fallback';
+  span.textContent = '?';
+  el.replaceWith(span);
+};
+
+function iconHtml(item, large = false) {
+  const cls = `item-icon ${large ? 'item-icon-lg' : ''} qb-${esc(item.quality || 'COMMON')}`;
+  if (item.icon_url) {
+    return `<img class="${cls}" src="${esc(item.icon_url)}" alt="" loading="lazy" onerror="imgFallback(this)" />`;
+  }
+  return `<span class="${cls} item-icon-fallback">?</span>`;
+}
+
+function scoreClass(score) {
+  return score >= 70 ? 'b-high' : score >= 45 ? 'b-mid' : 'b-low';
+}
+
+function sat(val, k) {
+  if (val <= 0 || k <= 0) return 0;
+  return val / (val + k);
+}
+
+function isConsumableOrCraft(cls) {
+  if (!cls) return false;
+  const s = cls.toLowerCase();
+  return (
+    s.includes('verbrauch') ||
+    s.includes('handwerk') ||
+    s.includes('handel') ||
+    s.includes('reagenz') ||
+    s.includes('edelstein') ||
+    s.includes('consumable') ||
+    s.includes('trade') ||
+    s.includes('reagent')
+  );
+}
+
+function getNormalizedWeights() {
+  const w = CONFIG.weights;
+  const sum = w.profit + w.flip + w.roi + w.discount + w.volume;
+  if (sum <= 0) {
+    return { profit: 20, flip: 20, roi: 20, discount: 20, volume: 20 };
+  }
+  const f = 100 / sum;
+  return {
+    profit: w.profit * f,
+    flip: w.flip * f,
+    roi: w.roi * f,
+    discount: w.discount * f,
+    volume: w.volume * f
+  };
+}
+
+function computeItemScore(item) {
+  const nw = getNormalizedWeights();
+  const totalProfitCopper = item.net_profit * item.rec_qty;
+  const totalProfitG = totalProfitCopper / 10000;
+  const turnover = (item.flip_rate_pct || 0) / 100;
+  const roi = item.net_roi_pct || 0;
+  const discountPct = item.fair_value > 0 ? ((item.fair_value - item.buy_now) / item.fair_value) * 100 : 0;
+  const posDiscount = Math.max(0, discountPct);
+  const dailySold = item.daily_sold_est || 0;
+  const isCollecting = DATA?.status === 'collecting';
+
+  let effProfit = nw.profit, effFlip = nw.flip, effRoi = nw.roi, effDiscount = nw.discount, effVol = nw.volume;
+  if (isCollecting) {
+    // In der Startphase ohne Verkaufsraten werden die verfuegbaren Preisfaktoren skaliert (max. 65 Pkt)
+    const avail = nw.profit + nw.roi + nw.discount;
+    const scale = avail > 0 ? 65 / avail : 0;
+    effProfit = nw.profit * scale;
+    effRoi = nw.roi * scale;
+    effDiscount = nw.discount * scale;
+    effFlip = 0;
+    effVol = 0;
+  }
+
+  const factors = [
+    {
+      key: 'profit',
+      name: 'Gesamtgewinn pro Flip',
+      max: effProfit,
+      pts: effProfit * sat(totalProfitG, CONFIG.halfGold),
+      valText: `${fmtGoldPlain(totalProfitCopper)} (${item.rec_qty} Stk × ${fmtGoldPlain(item.net_profit)})`,
+      math: `${fmtNum(effProfit, 1)} × ${fmtNum(totalProfitG, 2)} / (${fmtNum(totalProfitG, 2)} + ${fmtNum(CONFIG.halfGold, 1)}) [Halbwert: ${fmtNum(CONFIG.halfGold, 1)}g]`
+    },
+    {
+      key: 'flip',
+      name: 'Tägliche Flip-Rate (Umschlag)',
+      max: effFlip,
+      pts: effFlip * sat(turnover, 0.20),
+      valText: `${fmtNum(item.flip_rate_pct, 1)} % pro Tag`,
+      math: `${fmtNum(effFlip, 1)} × ${fmtNum(turnover, 2)} / (${fmtNum(turnover, 2)} + 0,20) [Halbwert: 20 %]`
+    },
+    {
+      key: 'roi',
+      name: 'Netto-ROI',
+      max: effRoi,
+      pts: effRoi * sat(roi, 20.0),
+      valText: `${fmtNum(roi, 1)} %`,
+      math: `${fmtNum(effRoi, 1)} × ${fmtNum(roi, 1)} / (${fmtNum(roi, 1)} + 20,0) [Halbwert: 20 %]`
+    },
+    {
+      key: 'discount',
+      name: `Rabatt zum Fair Value (${item.ref_label || 'P10/P25'})`,
+      max: effDiscount,
+      pts: effDiscount * sat(posDiscount, 15.0),
+      valText: `${fmtNum(discountPct, 1)} % (${fmtGoldPlain(item.buy_now)} vs. ${fmtGoldPlain(item.fair_value)})`,
+      math: `${fmtNum(effDiscount, 1)} × ${fmtNum(posDiscount, 1)} / (${fmtNum(posDiscount, 1)} + 15,0) [Halbwert: 15 %]`
+    },
+    {
+      key: 'volume',
+      name: 'Tagesvolumen (Liquidität)',
+      max: effVol,
+      pts: effVol * sat(dailySold, 12.0),
+      valText: `~${fmtNum(dailySold, 1)} geschätzte Verkäufe / Tag`,
+      math: `${fmtNum(effVol, 1)} × ${fmtNum(dailySold, 1)} / (${fmtNum(dailySold, 1)} + 12,0) [Halbwert: 12/Tag]`
+    }
+  ];
+
+  const rawScore = factors.reduce((s, f) => s + f.pts, 0);
+  const penalties = (item.flags || []).map(code => {
+    const info = FLAG_INFO[code] || { pts: 0, desc: 'Warn-Hinweis aktiv.' };
+    const scaledPts = info.pts > 0 ? Math.round(info.pts * CONFIG.penaltyMult * 10) / 10 : 0;
+    return { code, basePts: info.pts, pts: scaledPts, desc: info.desc };
+  });
+
+  const totalPenalty = penalties.reduce((s, p) => s + p.pts, 0);
+  const maxCap = isCollecting ? 65.0 : 99.0;
+  const score = Math.max(1.0, Math.min(maxCap, rawScore - totalPenalty));
+
+  return {
+    score: Math.round(score * 10) / 10,
+    rawScore,
+    totalPenalty,
+    factors,
+    penalties,
+    isCollecting,
+    totalProfitCopper
+  };
+}
+
+function saveConfig() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(CONFIG));
+  } catch (_) {}
+}
+
+function loadSavedConfig() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.weights) {
+      CONFIG = {
+        presetId: parsed.presetId || 'custom',
+        weights: {
+          profit: Number(parsed.weights.profit ?? 30),
+          flip: Number(parsed.weights.flip ?? 25),
+          roi: Number(parsed.weights.roi ?? 20),
+          discount: Number(parsed.weights.discount ?? 15),
+          volume: Number(parsed.weights.volume ?? 10)
+        },
+        halfGold: Number(parsed.halfGold ?? 5.0),
+        penaltyMult: Number(parsed.penaltyMult ?? 1.0)
+      };
+    }
+  } catch (_) {}
+}
+
+function syncSlidersFromConfig() {
+  document.getElementById('slWProfit').value = CONFIG.weights.profit;
+  document.getElementById('slWFlip').value = CONFIG.weights.flip;
+  document.getElementById('slWRoi').value = CONFIG.weights.roi;
+  document.getElementById('slWDiscount').value = CONFIG.weights.discount;
+  document.getElementById('slWVolume').value = CONFIG.weights.volume;
+  document.getElementById('slHalfGold').value = CONFIG.halfGold;
+  document.getElementById('slPenaltyMult').value = Math.round(CONFIG.penaltyMult * 100);
+
+  const nw = getNormalizedWeights();
+  document.getElementById('lblWProfit').textContent = `${fmtNum(nw.profit, 0)} Pkt`;
+  document.getElementById('lblWFlip').textContent = `${fmtNum(nw.flip, 0)} Pkt`;
+  document.getElementById('lblWRoi').textContent = `${fmtNum(nw.roi, 0)} Pkt`;
+  document.getElementById('lblWDiscount').textContent = `${fmtNum(nw.discount, 0)} Pkt`;
+  document.getElementById('lblWVolume').textContent = `${fmtNum(nw.volume, 0)} Pkt`;
+  document.getElementById('lblHalfGold').textContent = `${fmtNum(CONFIG.halfGold, 1)}g`;
+  document.getElementById('lblPenaltyMult').textContent = `${Math.round(CONFIG.penaltyMult * 100)} %`;
+
+  document.getElementById('weightSummary').textContent =
+    `Gewinn ${fmtNum(nw.profit, 0)} · Flip ${fmtNum(nw.flip, 0)} · ROI ${fmtNum(nw.roi, 0)} · Rabatt ${fmtNum(nw.discount, 0)} · Vol. ${fmtNum(nw.volume, 0)} | Skala ${fmtNum(CONFIG.halfGold, 1)}g`;
+}
+
+function renderPresetBar() {
+  const bar = document.getElementById('presetBar');
+  let html = '<span class="preset-label">Strategie</span>';
+  for (const [id, p] of Object.entries(PRESETS)) {
+    const active = CONFIG.presetId === id ? 'active' : '';
+    html += `<button type="button" class="preset-pill ${active}" onclick="applyPreset('${id}')">${esc(p.label)}</button>`;
+  }
+  if (CONFIG.presetId === 'custom') {
+    html += `<span class="preset-pill custom-tag">Benutzerdefiniert</span>`;
+  }
+  bar.innerHTML = html;
+
+  const descEl = document.getElementById('presetDesc');
+  if (PRESETS[CONFIG.presetId]) {
+    descEl.textContent = PRESETS[CONFIG.presetId].desc;
+  } else {
+    descEl.textContent = 'Eigene Gewichtung über die Score-Regler aktiv. Alle Scores und das Berechnungs-Modal passen sich live an.';
+  }
+}
+
+function applyPreset(id) {
+  const p = PRESETS[id];
+  if (!p) return;
+  CONFIG = {
+    presetId: id,
+    weights: { ...p.weights },
+    halfGold: p.halfGold,
+    penaltyMult: p.penaltyMult
+  };
+  const f = p.filters;
+  const catSel = document.getElementById('fClass');
+  if ([...catSel.options].some(o => o.value === f.cat)) {
+    catSel.value = f.cat;
+  }
+  document.getElementById('fScore').value = f.minScore;
+  document.getElementById('fMinProfit').value = f.minProfit;
+  document.getElementById('fFlip').value = f.minFlip;
+  document.getElementById('fMaxGold').value = f.maxGold;
+  document.getElementById('fSafeOnly').checked = f.safeOnly;
+
+  saveConfig();
+  renderPresetBar();
+  syncSlidersFromConfig();
+  render();
+}
+
+function onSliderChange() {
+  CONFIG.presetId = 'custom';
+  CONFIG.weights.profit = Number(document.getElementById('slWProfit').value);
+  CONFIG.weights.flip = Number(document.getElementById('slWFlip').value);
+  CONFIG.weights.roi = Number(document.getElementById('slWRoi').value);
+  CONFIG.weights.discount = Number(document.getElementById('slWDiscount').value);
+  CONFIG.weights.volume = Number(document.getElementById('slWVolume').value);
+  CONFIG.halfGold = Number(document.getElementById('slHalfGold').value);
+  CONFIG.penaltyMult = Number(document.getElementById('slPenaltyMult').value) / 100;
+
+  saveConfig();
+  renderPresetBar();
+  syncSlidersFromConfig();
+  render();
+}
+
+function toggleTuningDrawer() {
+  const drawer = document.getElementById('tuningDrawer');
+  const btn = document.getElementById('toggleTuningBtn');
+  const isOpen = drawer.classList.toggle('open');
+  btn.textContent = isOpen ? 'Score-Logik ausblenden ▴' : 'Score-Logik anpassen ▾';
+}
+
+function populateCategories() {
+  const sel = document.getElementById('fClass');
+  const prev = sel.value;
+  const classes = [...new Set((DATA?.flips || []).map(x => x.item_class).filter(Boolean))].sort();
+  sel.innerHTML =
+    '<option value="">Alle Kategorien</option>' +
+    '<option value="__CONSUMABLES_CRAFT__">Verbrauchsgüter & Handwerk</option>' +
+    classes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if (prev === '' || prev === '__CONSUMABLES_CRAFT__' || classes.includes(prev)) {
+    sel.value = prev;
+  }
+}
+
+async function loadData() {
+  try {
+    const res = await fetch('./flips_export.json?t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    DATA = await res.json();
+    const dt = new Date(DATA.updated_utc * 1000).toLocaleString('de-DE');
+    document.getElementById('metaLine').textContent =
+      `${DATA.market} | Letzter Sync: ${dt} | ${DATA.total_listings.toLocaleString('de-DE')} Auktionen`;
+    document.getElementById('kHistory').textContent = `${DATA.snapshots} Scans (${DATA.hours_span}h)`;
+
+    const banner = document.getElementById('statusBanner');
+    if (DATA.status === 'collecting' || DATA.snapshots < 24) {
+      banner.style.display = 'block';
+      banner.textContent = DATA.status === 'collecting'
+        ? 'Startphase: Sobald zwei unterschiedliche Stundenscans vorliegen, werden Verkaufsraten und Flip-Scores berechnet.'
+        : `Datenbasis im Aufbau (${DATA.snapshots} Scans / ${DATA.hours_span}h): Flip-Raten sind aktiv. Wochentags-Muster stabilisieren sich über die ersten 7 Tage.`;
+    } else {
+      banner.style.display = 'none';
+    }
+    populateCategories();
+    render();
+  } catch (err) {
+    document.getElementById('metaLine').textContent = 'Keine flips_export.json gefunden. Bitte Workflow einmal ausführen.';
+  }
+}
+
+function getFiltered() {
+  if (!DATA || !DATA.flips) return [];
+  const q = document.getElementById('fSearch').value.trim().toLowerCase();
+  const cat = document.getElementById('fClass').value;
+  const minScore = Number(document.getElementById('fScore').value) || 0;
+  const minProfitRaw = document.getElementById('fMinProfit').value;
+  const minProfitCopper = minProfitRaw !== '' ? Number(minProfitRaw) * 10000 : 0;
+  const minFlip = Number(document.getElementById('fFlip').value) || 0;
+  const maxGoldRaw = document.getElementById('fMaxGold').value;
+  const maxCopper = maxGoldRaw !== '' ? Number(maxGoldRaw) * 10000 : Infinity;
+  const safeOnly = document.getElementById('fSafeOnly').checked;
+  const sortKey = document.getElementById('fSort').value;
+
+  const scored = DATA.flips.map(x => {
+    const calc = computeItemScore(x);
+    return { ...x, live_score: calc.score, _calc: calc };
+  });
+
+  return scored
+    .filter(x => {
+      if (q && !x.name.toLowerCase().includes(q) && !String(x.item_id).includes(q)) return false;
+      if (cat === '__CONSUMABLES_CRAFT__') {
+        if (!isConsumableOrCraft(x.item_class)) return false;
+      } else if (cat && x.item_class !== cat) {
+        return false;
+      }
+      if (x.live_score < minScore) return false;
+      if (x.net_profit < minProfitCopper) return false;
+      if (x.flip_rate_pct < minFlip) return false;
+      if (x.buy_now > maxCopper) return false;
+      if (safeOnly && x.flags.length > 0) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortKey === 'score') return b.live_score - a.live_score;
+      if (sortKey === 'total_profit') return (b.net_profit * b.rec_qty) - (a.net_profit * a.rec_qty);
+      return b[sortKey] - a[sortKey];
+    });
+}
+
+function render() {
+  const list = getFiltered();
+  document.getElementById('kCount').textContent = list.length;
+  document.getElementById('kTopScore').textContent = list.length ? list[0].live_score.toFixed(1) : '-';
+  const avgRoi = list.length ? list.reduce((s, x) => s + x.net_roi_pct, 0) / list.length : 0;
+  document.getElementById('kAvgRoi').textContent = list.length ? avgRoi.toFixed(1) + '%' : '-';
+
+  const tbody = document.getElementById('tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:24px">Keine Items passen zu den aktuellen Filtern.</td></tr>';
+    return;
+  }
+
+  if (!SELECTED_ID || !list.some(x => x.item_id === SELECTED_ID)) {
+    SELECTED_ID = list[0].item_id;
+  }
+
+  tbody.innerHTML = list.map(x => {
+    const cls = scoreClass(x.live_score);
+    const flagsHtml = x.flags.map(f =>
+      `<span class="flag ${f === 'BAIT' ? 'flag-neutral' : ''}">${esc(f)}</span>`
+    ).join('');
+    const totalProfit = x.net_profit * x.rec_qty;
+    return `
+      <tr class="${x.item_id === SELECTED_ID ? 'active' : ''}" onclick="selectItem(${x.item_id})">
+        <td class="col-score">
+          <button type="button" class="badge ${cls}" title="Klicken für exakte Score-Berechnung"
+            onclick="openScoreModal(${x.item_id}, event)">
+            ${x.live_score.toFixed(0)} <span class="badge-info">?</span>
+          </button>
+        </td>
+        <td class="col-item">
+          <div class="item-cell">
+            ${iconHtml(x, false)}
+            <div class="item-name-wrap">
+              <div class="item-name-line">
+                <span class="q-${esc(x.quality)}">${esc(x.name)}</span>${flagsHtml}
+              </div>
+              ${x.item_class ? `<span class="item-cat">${esc(x.item_class)}</span>` : ''}
+            </div>
+          </div>
+        </td>
+        <td class="num col-metric" data-label="Kauf jetzt">${fmtGoldHtml(x.buy_now)}</td>
+        <td class="num col-metric" data-label="Ziel-VK">${fmtGoldHtml(x.target_sell)}</td>
+        <td class="num col-metric" data-label="Netto / Stk" style="color:var(--green)">
+          ${fmtGoldHtml(x.net_profit)}
+          <span class="subval">×${x.rec_qty}: +${fmtGoldPlain(totalProfit)}</span>
+        </td>
+        <td class="num col-metric" data-label="ROI">${x.net_roi_pct.toFixed(1)}%</td>
+        <td class="num col-metric" data-label="Flip / Tag">
+          ${x.flip_rate_pct.toFixed(0)}%
+          <span class="subval">~${x.daily_sold_est}/Tag</span>
+        </td>
+        <td class="win-cell col-metric" data-label="Kauf / VK">
+          <span class="win-k">K: ${esc(x.best_buy_window)}</span><br />
+          <span class="win-v">V: ${esc(x.best_sell_window)}</span>
+        </td>
+      </tr>`;
+  }).join('');
+
+  renderDetail(list.find(x => x.item_id === SELECTED_ID));
+}
+
+function selectItem(id) {
+  SELECTED_ID = id;
+  render();
+}
+
+function openScoreModal(itemId, ev) {
+  if (ev) ev.stopPropagation();
+  const item = (DATA?.flips || []).find(x => x.item_id === itemId);
+  if (!item) return;
+
+  if (SELECTED_ID !== itemId) {
+    SELECTED_ID = itemId;
+    render();
+  }
+
+  const calc = computeItemScore(item);
+  const stratName = PRESETS[CONFIG.presetId] ? PRESETS[CONFIG.presetId].label : 'Benutzerdefiniert';
+  const ahFee = Math.round(item.target_sell * 0.05);
+  const afterFee = Math.round(item.target_sell * 0.95);
+
+  document.getElementById('scoreModalTitle').innerHTML = `
+    <span class="q-${esc(item.quality)}">${esc(item.name)}</span>
+    <span style="color:var(--muted);font-weight:400"> | Score ${calc.score.toFixed(1)}</span>
+  `;
+
+  const factorsHtml = calc.factors.map(f => {
+    const pct = f.max > 0 ? Math.min(100, Math.max(0, (f.pts / f.max) * 100)) : 0;
+    return `
+      <div class="factor">
+        <div class="factor-top">
+          <span>${esc(f.name)} <span style="color:var(--muted);font-weight:400">(Gewicht: ${fmtNum(f.max, 1)} Pkt)</span></span>
+          <span class="factor-pts">+${fmtNum(f.pts, 1)} Pkt</span>
+        </div>
+        <div class="factor-bar"><div class="factor-fill" style="width:${pct.toFixed(1)}%"></div></div>
+        <div class="factor-math"><strong>Wert:</strong> ${esc(f.valText)}<br /><strong>Rechnung:</strong> ${esc(f.math)}</div>
+      </div>`;
+  }).join('');
+
+  const penaltiesHtml = calc.penalties.length
+    ? calc.penalties.map(p => `
+        <div class="pen-row ${p.pts === 0 ? 'neutral' : ''}">
+          <div><strong>${esc(p.code)}</strong>: ${esc(p.desc)}</div>
+          <strong style="white-space:nowrap;color:${p.pts === 0 ? '#7dd3fc' : '#fca5a5'}">${p.pts === 0 ? '0 Pkt' : '-' + fmtNum(p.pts, 1) + ' Pkt'}</strong>
+        </div>`).join('')
+    : '<div class="sub" style="margin-bottom:10px">Keine Warn-Flags aktiv (0 Pkt Abzug).</div>';
+
+  const collectingNote = calc.isCollecting
+    ? '<div class="m-note" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.35);color:#fde68a">Startphase ohne Verkaufsraten: Bewertet werden vorübergehend nur Gewinn, ROI und Rabatt (maximal 65 Punkte).</div>'
+    : '';
+
+  document.getElementById('scoreModalBody').innerHTML = `
+    <div class="m-strat-bar">
+      <span>Aktive Strategie: <strong style="color:var(--gold)">${esc(stratName)}</strong></span>
+      <span>Gold-Halbwert: <strong>${fmtNum(CONFIG.halfGold, 1)}g</strong> | Risiko-Strenge: <strong>${Math.round(CONFIG.penaltyMult * 100)} %</strong></span>
+    </div>
+    ${collectingNote}
+    <div class="m-note">
+      <strong>Berechnungsprinzip:</strong> Jeder Faktor nutzt die Sättigungskurve <code>Gewicht × x / (x + Halbwert)</code>. Beim Erreichen des Halbwerts ergibt ein Faktor exakt 50 % seiner möglichen Punkte; darüber hinaus flacht der Zugewinn ab.
+    </div>
+
+    <div class="sec-title">1. Positive Faktoren (Summe max. ${calc.isCollecting ? '65' : '100'} Pkt)</div>
+    <div class="factor-list">${factorsHtml}</div>
+
+    <div class="sec-title">2. Warn-Flags & Risikoabzüge (Strenge: ${Math.round(CONFIG.penaltyMult * 100)} %)</div>
+    ${penaltiesHtml}
+
+    <div class="sec-title" style="margin-top:14px">3. Herleitung Netto-Gewinn pro Stück</div>
+    <div class="m-summary" style="margin-top:0">
+      <div class="m-sum-row"><span>Ziel-Verkaufspreis (${esc(item.ref_label || 'P10/P25')}-basiert):</span><span>${fmtGoldHtml(item.target_sell)}</span></div>
+      <div class="m-sum-row"><span>Abzgl. 5 % AH-Gebühr:</span><span style="color:var(--red)">-${fmtGoldHtml(ahFee)}</span></div>
+      <div class="m-sum-row"><span>Auszahlung nach Gebühr:</span><span>${fmtGoldHtml(afterFee)}</span></div>
+      <div class="m-sum-row"><span>Abzgl. Einkaufspreis:</span><span style="color:var(--red)">-${fmtGoldHtml(item.buy_now)}</span></div>
+      <div class="m-sum-row"><span>Abzgl. geschätztes Relist-Deposit:</span><span style="color:var(--red)">-${fmtGoldHtml(item.est_deposit)}</span></div>
+      <div class="m-sum-row m-sum-total">
+        <span>Netto-Gewinn / Stk (×${item.rec_qty} Stk):</span>
+        <span style="color:var(--green)">${fmtGoldHtml(item.net_profit)} (${fmtGoldPlain(calc.totalProfitCopper)})</span>
+      </div>
+    </div>
+
+    <div class="m-summary">
+      <div class="m-sum-row"><span>Roh-Score aus den 5 Faktoren:</span><strong>+${fmtNum(calc.rawScore, 1)} Pkt</strong></div>
+      <div class="m-sum-row"><span>Abzüge durch Warn-Flags:</span><strong style="color:${calc.totalPenalty > 0 ? 'var(--red)' : 'var(--muted)'}">-${fmtNum(calc.totalPenalty, 1)} Pkt</strong></div>
+      <div class="m-sum-row m-sum-total">
+        <span>Endergebnis (Skala 1 bis ${calc.isCollecting ? '65' : '99'}):</span>
+        <span style="color:var(--gold)">${fmtNum(calc.score, 1)} Pkt</span>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('scoreModalBackdrop').classList.add('open');
+}
+
+function closeScoreModal(ev) {
+  if (ev && ev.target !== ev.currentTarget) return;
+  document.getElementById('scoreModalBackdrop').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeScoreModal();
+});
+
+function normalizeHistory(raw) {
+  return (raw || []).map(p => ({
+    ts: p[0],
+    min: p[1],
+    ref: p[2],
+    med: p.length >= 4 ? p[3] : p[2],
+    qty: p.length >= 5 ? p[4] : null
+  }));
+}
+
+function buildChartHtml(item) {
+  const pts = normalizeHistory(item.history);
+  const refLbl = esc(item.ref_label || 'P10/P25');
+  if (pts.length < 2) {
+    return '<div class="sub" style="padding:18px;text-align:center">Preisverlauf erscheint ab 2 unterschiedlichen Snapshots.</div>';
+  }
+
+  const w = 480, ht = 195, padL = 14, padR = 14, padT = 16, padB = 22;
+  const minTs = pts[0].ts;
+  const maxTs = pts[pts.length - 1].ts;
+  const tsSpan = Math.max(1, maxTs - minTs);
+
+  const vals = pts.flatMap(p => [p.min, p.ref]).concat([item.buy_now, item.target_sell]);
+  const minV = Math.min(...vals) * 0.94;
+  const maxV = Math.max(...vals) * 1.06 || 1;
+
+  const sx = ts => padL + ((ts - minTs) / tsSpan) * (w - padL - padR);
+  const sy = v => ht - padB - ((v - minV) / (maxV - minV)) * (ht - padT - padB);
+
+  const refPath = pts.map(p => `${sx(p.ts).toFixed(1)},${sy(p.ref).toFixed(1)}`).join(' ');
+  const minPath = pts.map(p => `${sx(p.ts).toFixed(1)},${sy(p.min).toFixed(1)}`).join(' ');
+  const yBuy = sy(item.buy_now).toFixed(1);
+  const ySell = sy(item.target_sell).toFixed(1);
+
+  return `
+    <div class="chart-legend">
+      <span><i class="leg-dot" style="background:#38bdf8"></i>Marktpreis (${refLbl})</span>
+      <span><i class="leg-dot" style="background:#94a3b8"></i>Min-Preis</span>
+      <span><i class="leg-dot" style="background:#f5b942"></i>Ziel-VK</span>
+      <span><i class="leg-dot" style="background:#22c55e"></i>Kauf</span>
+    </div>
+    <svg id="priceChartSvg" viewBox="0 0 ${w} ${ht}" style="width:100%;height:auto;display:block;touch-action:none">
+      <line x1="${padL}" y1="${ySell}" x2="${w-padR}" y2="${ySell}" stroke="#f5b942" stroke-dasharray="4 4" stroke-width="1.2"/>
+      <line x1="${padL}" y1="${yBuy}" x2="${w-padR}" y2="${yBuy}" stroke="#22c55e" stroke-dasharray="4 4" stroke-width="1.2"/>
+      <polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${refPath}"/>
+      <polyline fill="none" stroke="#94a3b8" stroke-width="1.3" opacity="0.75" points="${minPath}"/>
+      <text x="${padL+2}" y="${Math.max(12, Number(ySell)-4)}" fill="#f5b942" font-size="10">Ziel-VK: ${fmtGoldPlain(item.target_sell)}</text>
+      <text x="${padL+2}" y="${Math.min(ht-padB-3, Number(yBuy)+12)}" fill="#22c55e" font-size="10">Kauf: ${fmtGoldPlain(item.buy_now)}</text>
+      <text x="${padL}" y="${ht-5}" fill="#8b9bb4" font-size="9.5">${fmtShortDate(minTs)}</text>
+      <text x="${w-padR}" y="${ht-5}" fill="#8b9bb4" font-size="9.5" text-anchor="end">${fmtShortDate(maxTs)}</text>
+
+      <line id="chLine" x1="0" y1="${padT}" x2="0" y2="${ht-padB}" stroke="#e2e8f0" stroke-dasharray="2 2" stroke-width="1" opacity="0"/>
+      <circle id="chDotRef" cx="0" cy="0" r="4" fill="#38bdf8" stroke="#0c0f14" stroke-width="1.5" opacity="0"/>
+      <circle id="chDotMin" cx="0" cy="0" r="3.5" fill="#94a3b8" stroke="#0c0f14" stroke-width="1.5" opacity="0"/>
+      <rect id="chOverlay" x="0" y="0" width="${w}" height="${ht}" fill="transparent" style="cursor:crosshair"/>
+    </svg>
+    <div class="chart-tooltip" id="chartTooltip"></div>
+  `;
+}
+
+function attachChartHover(item) {
+  const svg = document.getElementById('priceChartSvg');
+  const overlay = document.getElementById('chOverlay');
+  const tooltip = document.getElementById('chartTooltip');
+  if (!svg || !overlay || !tooltip) return;
+
+  const pts = normalizeHistory(item.history);
+  if (pts.length < 2) return;
+
+  const w = 480, ht = 195, padL = 14, padR = 14, padT = 16, padB = 22;
+  const minTs = pts[0].ts;
+  const tsSpan = Math.max(1, pts[pts.length - 1].ts - minTs);
+  const vals = pts.flatMap(p => [p.min, p.ref]).concat([item.buy_now, item.target_sell]);
+  const minV = Math.min(...vals) * 0.94;
+  const maxV = Math.max(...vals) * 1.06 || 1;
+  const sx = ts => padL + ((ts - minTs) / tsSpan) * (w - padL - padR);
+  const sy = v => ht - padB - ((v - minV) / (maxV - minV)) * (ht - padT - padB);
+
+  const line = document.getElementById('chLine');
+  const dotRef = document.getElementById('chDotRef');
+  const dotMin = document.getElementById('chDotMin');
+  const refLbl = esc(item.ref_label || 'P10/P25');
+
+  const updateAtClientX = (clientX) => {
+    const rect = svg.getBoundingClientRect();
+    const relX = ((clientX - rect.left) / rect.width) * w;
+
+    let best = pts[0];
+    let bestDist = Infinity;
+    for (const p of pts) {
+      const d = Math.abs(sx(p.ts) - relX);
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+
+    const cx = sx(best.ts);
+    const cyRef = sy(best.ref);
+    const cyMin = sy(best.min);
+
+    line.setAttribute('x1', cx);
+    line.setAttribute('x2', cx);
+    line.setAttribute('opacity', '0.65');
+    dotRef.setAttribute('cx', cx);
+    dotRef.setAttribute('cy', cyRef);
+    dotRef.setAttribute('opacity', '1');
+    dotMin.setAttribute('cx', cx);
+    dotMin.setAttribute('cy', cyMin);
+    dotMin.setAttribute('opacity', '1');
+
+    tooltip.innerHTML = `
+      <div class="ct-time">${fmtShortDate(best.ts)} Uhr</div>
+      <div class="ct-row"><span>Marktpreis (${refLbl}):</span><span>${fmtGoldHtml(best.ref)}</span></div>
+      <div class="ct-row"><span>Min-Preis:</span><span>${fmtGoldHtml(best.min)}</span></div>
+      <div class="ct-row"><span>Median (Info):</span><span>${fmtGoldHtml(best.med)}</span></div>
+      ${best.qty !== null ? `<div class="ct-row"><span>AH-Bestand:</span><span>${best.qty} Stk</span></div>` : ''}
+    `;
+    tooltip.style.display = 'block';
+
+    const pctX = cx / w;
+    if (pctX > 0.55) {
+      tooltip.style.left = '12px';
+      tooltip.style.right = 'auto';
+    } else {
+      tooltip.style.right = '12px';
+      tooltip.style.left = 'auto';
+    }
+  };
+
+  const hide = () => {
+    line.setAttribute('opacity', '0');
+    dotRef.setAttribute('opacity', '0');
+    dotMin.setAttribute('opacity', '0');
+    tooltip.style.display = 'none';
+  };
+
+  overlay.addEventListener('mousemove', e => updateAtClientX(e.clientX));
+  overlay.addEventListener('mouseleave', hide);
+  overlay.addEventListener('touchstart', e => {
+    if (e.touches[0]) updateAtClientX(e.touches[0].clientX);
+  }, { passive: true });
+  overlay.addEventListener('touchmove', e => {
+    if (e.touches[0]) updateAtClientX(e.touches[0].clientX);
+  }, { passive: true });
+}
+
+function buildHeatmap(hm) {
+  const vals = Object.values(hm || {});
+  if (!vals.length) return '<div class="sub">Noch keine Zeitfenster-Daten vorhanden.</div>';
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  const days = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+  const blocks = [0,4,8,12,16,20];
+  let html = '<div class="hm"><div></div>' + blocks.map(b => `<div class="hm-head">${b}-${b+4}h</div>`).join('');
+  days.forEach((d, wd) => {
+    html += `<div class="hm-head" style="text-align:left;padding-top:6px">${d}</div>`;
+    blocks.forEach(b => {
+      const v = hm[`${wd}_${b}`];
+      if (v === undefined) {
+        html += '<div class="hm-cell" style="color:var(--muted)">-</div>';
+      } else {
+        const ratio = maxV === minV ? 0.5 : (v - minV) / (maxV - minV);
+        const bg = ratio < 0.35
+          ? `rgba(34,197,94,${0.35 - ratio * 0.5})`
+          : ratio > 0.65
+          ? `rgba(245,185,66,${0.12 + (ratio - 0.65) * 0.9})`
+          : 'rgba(148,163,184,0.08)';
+        html += `<div class="hm-cell" style="background:${bg}" title="${d} ${b}-${b+4}h: ${fmtGoldPlain(v)}">${(v/10000).toFixed(1)}g</div>`;
+      }
+    });
+  });
+  return html + '</div>';
+}
+
+function copySelectedName(btn) {
+  const item = (DATA?.flips || []).find(x => x.item_id === SELECTED_ID);
+  if (!item) return;
+  navigator.clipboard.writeText(item.name);
+  const old = btn.textContent;
+  btn.textContent = 'Kopiert!';
+  setTimeout(() => btn.textContent = old, 1200);
+}
+
+function renderDetail(item) {
+  const el = document.getElementById('detailSection');
+  if (!item) return;
+  const totalInv = item.buy_now * item.rec_qty;
+  const totalNet = item.net_profit * item.rec_qty;
+  const refLbl = esc(item.ref_label || 'P10/P25');
+  const floorInfo = item.bottom_qty !== undefined ? `${item.bottom_qty} Stk` : '-';
+  const classText = item.item_class ? ` | ${esc(item.item_class)}` : '';
+  const flagsHtml = (item.flags || []).map(f =>
+    `<span class="flag ${f === 'BAIT' ? 'flag-neutral' : ''}">${esc(f)}</span>`
+  ).join('');
+
+  el.innerHTML = `
+    <div class="detail-top">
+      <div class="detail-head">
+        ${iconHtml(item, true)}
+        <div>
+          <h2 class="q-${esc(item.quality)}">${esc(item.name)} ${flagsHtml}</h2>
+          <div class="sub">ID #${item.item_id}${classText} | Bestand: ${item.cur_qty} Stk | Gesch. Verkäufe/Tag: ${item.daily_sold_est} | Flip-Rate: ${item.flip_rate_pct.toFixed(1)} %</div>
+        </div>
+      </div>
+      <div class="detail-actions">
+        <button type="button" class="badge ${scoreClass(item.live_score)}" style="padding:7px 12px;font-size:0.84rem"
+          onclick="openScoreModal(${item.item_id})">
+          Score ${item.live_score.toFixed(1)} | Berechnung anzeigen
+        </button>
+        <button class="btn" onclick="copySelectedName(this)">Name kopieren</button>
+        <a class="btn" style="text-decoration:none" target="_blank" rel="noopener" href="https://www.wowhead.com/classic/de/item=${item.item_id}">Wowhead</a>
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-box">
+        <div class="sec-title">Item-Daten & Kaufplan</div>
+        <div class="action-row"><span>Empfohlene Kaufmenge:</span><strong>${item.rec_qty} Stk</strong></div>
+        <div class="action-row"><span>Günstigster Bestand (+5 % Floor):</span><span>${floorInfo}</span></div>
+        <div class="action-row"><span>Max. Einkaufspreis / Stk:</span><span>${fmtGoldHtml(item.buy_now)}</span></div>
+        <div class="action-row"><span>Fair Value (${refLbl}):</span><span>${fmtGoldHtml(item.fair_value)}</span></div>
+        <div class="action-row"><span>Ziel-Verkaufspreis / Stk:</span><span>${fmtGoldHtml(item.target_sell)}</span></div>
+        <div class="action-row"><span>Gesch. Relist-Deposit / Stk:</span><span>${fmtGoldHtml(item.est_deposit)}</span></div>
+        <div class="action-row"><span>Netto-Gewinn / Stk (ROI):</span><span style="color:var(--green)">${fmtGoldHtml(item.net_profit)} (${item.net_roi_pct.toFixed(1)} %)</span></div>
+        <div class="action-row sep">
+          <span>Gesamt-Invest -> Netto-Gewinn:</span>
+          <span>${fmtGoldHtml(totalInv)} -> <strong style="color:var(--green)">+${fmtGoldHtml(totalNet)}</strong></span>
+        </div>
+        <div class="action-row"><span>Bestes Kauf- / VK-Fenster:</span><span>${esc(item.best_buy_window)} / ${esc(item.best_sell_window)}</span></div>
+      </div>
+
+      <div class="detail-box box-chart">
+        <div class="sec-title">Interaktiver Preisverlauf (Maus oder Finger drüberfahren)</div>
+        <div class="chart-box">${buildChartHtml(item)}</div>
+      </div>
+
+      <div class="detail-box">
+        <div class="sec-title">Timing-Heatmap auf ${refLbl}-Basis (Grün = kaufen | Gold = verkaufen)</div>
+        ${buildHeatmap(item.heatmap)}
+      </div>
+    </div>
+  `;
+
+  attachChartHover(item);
+}
+
+loadSavedConfig();
+renderPresetBar();
+syncSlidersFromConfig();
+loadData();
+</script>
+</body>
+</html>
